@@ -1,0 +1,99 @@
+---
+title: "Demo on tidy text format"
+output: html_notebook
+---
+
+Using tidy data principles can make many text mining tasks easier, more effective, and consistent with tools already in wide use. Much of the infrastructure needed for text mining with tidy data frames already exists in packages like `dplyr`, `tidyr`, `stringr` and `ggplot2`. The new package `tidytext` provides additional functions specialising text mining.
+
+```{r}
+# Uncomment if you have not installed the package
+#install.packages("tidytext")
+library(tidytext)
+library(tidyverse)
+```
+
+
+# The `unnest_tokens` function
+
+Emily Dickinson wrote some lovely text in her time.
+
+```{r}
+text <- c("Because I could not stop for Death -",
+          "He kindly stopped for me -",
+          "The Carriage held but just Ourselves -",
+          "and Immortality")
+text
+```
+
+We can put those line into a data frame (table) format:
+
+```{r}
+text_df <- data_frame(line = 1:4, text = text)
+text_df
+```
+
+The simple tokenization can be done simply as:
+
+```{r}
+text_df %>% unnest_tokens(word, text)
+```
+
+**Question:** In a few words, describe what the `unnest_token` does.
+
+# Tidying the works of Jane Austen
+
+The package `janeaustenr` contains the text of Jane Austen's 6 completed, published novels. 
+
+```{r}
+# install.packages("janeaustenr")
+library(janeaustenr)
+
+austen_books() %>% nrow()
+austen_books() %>% head(10)
+```
+
+We will start by adding the line numbers and the chapter numbers.
+
+```{r}
+original_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]",
+                                                 ignore_case = TRUE)))) %>%
+  ungroup()
+original_books
+```
+
+**Question:** Let's tidy all Jane Austen's books. The tidy version should be stored in `tidy_books`
+
+```{r}
+tidy_books <- ...
+```
+
+
+The package `tidytext` has a collection of stop words in the dataset `stop_words`. We can simply remove stop words by using `anti_join`
+
+```{r}
+tidy_books <- tidy_books %>% anti_join(stop_words)
+```
+
+We can also use dplyr's count() to find the most common words in all the books as a whole.
+
+```{r}
+tidy_books %>% count(word, sort = TRUE) 
+```
+
+# Word frequencies
+
+A common task in text mining is to look at word frequencies, just like we have done above for Jane Austen's novels, and to compare frequencies across different texts. We can do this intuitively and smoothly using tidy data principles. We already have Jane Austen's works; let's get two more sets of texts to compare to. First, let's look at some science fiction and fantasy novels by H.G. Wells, who lived in the late 19th and early 20th centuries. 
+
+The `gutenbergr` package provides access to the public domain works from the [Project Gutenberg](https://www.gutenberg.org/) collection. By simply use the function `gutenberg_download()` and the book's ID, R will automatically access the library and download the text.
+
+```{r}
+# install.packages("gutenbergr")
+library(gutenbergr)
+hgwells <- gutenberg_download(c(35, 36, 5230, 159))
+```
+
+**Question:** Let tidy the text from HG Wells' novels, compare the word frequency
+

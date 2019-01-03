@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-09-12" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### September 12, 2018
+
+---
+
+
+
+
+# What we covered on Monday?
+
+--
+
+- Set operations in SQL: `INTERSECT`, `UNION`, and `UNION ALL`
+
+--
+
+- A subquery is a `SELECT` statement that is embedded in a clause of another `SELECT`.
+  
+--
+
+  - Find headquarter cities of companies having factories in both US *and* China.
+
+
+```r
+Company (name, hq_city)
+Product (pname, maker, factory_loc)
+```
+
+
+```r
+SELECT DISTINCT hq_city
+FROM   Company, Product
+WHERE  maker = name 
+*      AND name IN (
+		SELECT maker
+	  	FROM   Product
+	  	WHERE  factory_loc = ‘US’)
+* AND name IN (
+		SELECT maker
+	  	FROM   Product
+	  	WHERE  factory_loc = ‘China’)
+```
+
+---
+# Subqueries
+
+- Can build powerful statements out of simple ones by using subqueries.
+
+- You can place the subsquey in a number of SQL clauses: `WHERE`, `HAVING`, `FROM`.
+
+- In the syntax, comparison operator falls into two classes:
+
+  - Single-row operators ( &gt;, =, &gt;=, &lt;, &lt;=, &lt;&gt;)
+
+  - Multiple-row operators (with `IN`, `ANY`, `ALL`)
+
+--
+
+Example: `Product(name, price, category, maker)`
+
+
+```r
+SELECT name
+FROM   Product
+*WHERE  price &gt; ALL(
+	SELECT price
+     FROM   Product
+     WHERE  maker = ‘Gizmo-Works’);
+```
+
+---
+# What is wrong with this statement?
+
+
+```r
+Product(name, price, category, maker)
+```
+
+
+```r
+SELECT name
+FROM   Product
+WHERE  price = ( 
+	SELECT MIN(price)
+     FROM   Product);
+```
+
+---
+# Nested queries as alternatives to `INTERSECT`
+
+- *Note:* `INTERSECT` might **not** be available in some DBMSs!
+
+
+```r
+(SELECT R.A, R.B
+ FROM   R)
+INTERSECT
+(SELECT S.A, S.B
+ FROM   S)
+```
+
+--
+
+
+```r
+SELECT R.A, R.B
+FROM   R
+WHERE EXISTS(
+   	SELECT *
+   	  FROM S
+   	WHERE R.A=S.A AND R.B=S.B)
+```
+
+---
+# Correlated Queries
+### Using External Vars in Internal Subquery
+
+&gt; Find movies whose title appears more than once.
+
+
+```r
+Movie(title, year, director, length)
+```
+
+--
+
+
+```r
+SELECT DISTINCT title
+*FROM   Movie AS m
+WHERE  year &lt;&gt; ANY( 
+		SELECT  year
+*    	FROM    Movie
+*    	WHERE  title =  m.title)
+```
+
+- *Note:* the scoping of the variables!
+
+---
+# Complex Correlated Query
+
+&gt; Find products (and their manufacturers) that are more expensive than all products made by the same manufacturer before 1972
+
+
+```r
+Product (name, price, category, maker, year)
+```
+
+&lt;br&gt;
+
+.center[ **Let's pause and attempt to write such query**]
+
+--
+
+&lt;br&gt;
+
+
+```r
+SELECT DISTINCT  x.name, x.maker
+FROM   Product AS x
+WHERE  x.price &gt; ALL(
+		SELECT y.price
+          FROM   Product AS y
+          WHERE  x.maker = y.maker 
+		   AND y.year &lt; 1972)
+```
+
+**Note:** Complex correlated query can be very powerful (also much harder to optimize)
+
+---
+# Nested Query vs. `GROUP BY`
+
+
+```r
+Author (login, name)
+Wrote (login, url)
+```
+
+&gt; Find authors who wrote 10 or more documents.
+
+--
+
+*Attempt 1: with nested queries*
+
+
+```r
+SELECT DISTINCT Author.name
+FROM   Author
+WHERE  COUNT(
+	SELECT Wrote.url
+	FROM   Wrote
+	WHERE  Author.login = Wrote.login) &gt; 10
+```
+
+---
+# Nested Query vs. `GROUP BY`
+
+
+```r
+Author (login, name)
+Wrote (login, url)
+```
+
+&gt; Find authors who wrote 10 or more documents.
+
+--
+
+*Attempt 2: without nested queries*
+
+--
+
+
+```r
+SELECT   Author.name
+FROM     Author, Wrote
+WHERE    Author.login = Wrote.login
+GROUP BY Author.name
+HAVING   COUNT(Wrote.url) &gt; 10
+```
+
+**Question:** Do we need `DISTINCT` in the above query?
+
+---
+# Nested Query vs. `GROUP BY`
+
+Which way is more efficient?
+
+--
+
+- Attempt 1 - with nested queries: How many times do we do a SFW query over all of the Wrote relations?
+
+--
+
+- Attempt 2 - with `GROUP BY`: How about when written this way?
+
+--
+
+.center[With `GROUP BY`, queries can be much more efficient!]
+
+---
+# Views
+
+- Subqueries are powerful, but make the queries easy to become complex and hard to "debug".
+
+- It is always better to break down into intermediate tables.
+
+- *Drawback:* The new table **uses up storage**, even though it is recomputable from other tables.
+
+--
+
+- Stored output tables are some time problematic as it might be **out of date.**
+
+--
+
+- SQL provides a notion of logical **views**: basically named queries that are re-evaluated upon each reference.
+
+- The syntax is straightforward:
+
+
+```r
+CREATE VIEW &lt;name&gt; AS
+&lt;SELECT statement&gt;;
+```
+
+---
+# Using views in SQL
+
+- Example: [http://sqlfiddle.com/#!9/0fb0bd](http://sqlfiddle.com/#!9/0fb0bd)
+
+--
+
+- Queries can use **view** as if it were a base table
+
+--
+
+- View always up-to-date
+
+  - (Re-)evaluated whenever a query uses the view
+  
+  - Keeping it up-to-date is responsibility of the DBMS and not the users
+
+--
+
+- `DROP VIEW` command: dispose of a view
+
+---
+# Updating a View
+
+- What if an update is applied to a view as if it were a base table? (see [http://sqlfiddle.com/#!9/0fb0bd](http://sqlfiddle.com/#!9/0fb0bd))
+
+--
+
+- Views are updateable. You can use the `INSERT` or `UPDATE` to add or modify rows in the base table. `DELETE` applied on view can remove rows in the base table
+
+--
+
+- Not all views are updatable.
+
+  - What if view contain aggregate functions?
+  
+  - What if the view is defined as a `UNION` of two tables?
+  
+---
+# Too many views
+
+Views can help:
+
+- Simplify queries
+
+- Make complex queries more readable
+
+- Share "sql programs" with others
+
+--
+
+&lt;br&gt;
+
+Problems:
+
+- Creating a new view for each (exploratory) query will result in a lot if views! Example: `temp1`, `temp1_joey`, `temp1_joey_fixed`,...
+
+- Often you will not be allowed to create views 
+
+---
+# Common Table Expressions (`WITH`)
+
+- Think of these as a view that exists only during query
+
+- Syntax:
+
+
+```r
+WITH &lt;name&gt; [(renamed columns)] AS
+  (&lt;SELECT statement&gt;)
+[ , &lt;name2&gt; AS (&lt;SELECT statement&gt;)...]
+```
+
+- Can define one or more CTEs in `WITH` clause.
+
+- Level of support for CTEs varies across different DBMSs. Microsoft SQL Server has been supported CTEs for a long time, while MySQL only starts supporting with its new version 8.0.
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

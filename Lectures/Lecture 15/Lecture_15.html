@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-09-28" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### September 28, 2018
+
+---
+
+
+
+
+# Aggregation Framework in MongoDB
+
+- An advance query language to transform and combine data from multiple documents. 
+
+- The MongoDB's eqivalence to the SQL's `GROUP BY` clause.
+
+--
+
+- A call to the aggregation framework defines a pipeline, the **aggregation pipeline**, where the output from each step in the pipeline provides input to the next step.
+
+![](images/pipeline.png)
+
+---
+# Aggregation pipeline operations
+
+| SQL command | Aggregation operator | Meaning |
+|-------------|----------------------|---------|
+| SELECT | `$project` | Specify fields in the output document |
+|  | `$group` functions | Ex: `$sum`, `$min`, `$avg`, etc.
+| FROM |  | Specify in `collectionName$aggregate(...)` |
+| JOIN |  | There is no join in MongoDB | 
+|  | `$unwind` | Expand an array, one document for each array entry |
+| WHERE | `$match` | Select documents to be processed |
+| GROUP BY | `$group` | Group documents by a specified key |
+| HAVING | `$match` | Select documents to be processed |
+| ORDER BY | `$sort` | Sort documents |
+| LIMIT | `$limit` | Limit the number of output documents |
+|   | `$out` | Write the results to a collection |
+
+---
+# An example
+
+
+```r
+collection$aggregate('[ {$match: ...}, {$group: ...}, {$sort: ...} ]')
+```
+
+![](images/pipeline-example.png)
+
+--
+
+
+```r
+SELECT * 
+  FROM myCollection
+  WHERE ...
+  GROUP BY ...
+  ORDER BY ...
+```
+
+--
+
+- While SQL follows their standard order, MongoDB pipeline follows the order of operators given in the query.
+
+---
+# Another example
+
+- Consider a collection, named `sales`, containing sales records of stores across the world.
+
+- We'd like to compute the volume and the average revenue per country
+
+
+```r
+sales$aggregate( '[{
+         "$group" : {
+              "_id" : "$country", 
+              "totalRevenue" : {"$average" : "$revenue"},
+              "numSales" : {"$sum" : 1}
+         }
+}]')
+```
+
+- `$group` operator always has `"$id" : $&lt;field name&gt;`
+
+- Grouping with multiple fields: `{"$group" : {"_id" : {"state" : "$state", "city" : "$city"}}}`
+
+---
+# And another example
+
+- To find which item being loves the most in our current running example
+
+
+```r
+example$aggregate('[
+                  {"$unwind" : "$loves"},
+                  {"$group" : {"_id" : "$loves",
+                               "total" : {"$sum" : 1}}},
+                  {"$sort": {"total" : -1}},
+                  {"$limit" : 1}
+]')
+```
+
+- Run the above query and verify the result
+---
+# Activity - Chicago crimes data
+
+**Question:** Where fo most crimes take place?
+
+
+```r
+crimes &lt;- mongo(collection = "crimes", db = "Chicago",
+    url = "mongodb://&lt;USERNAME&gt;:&lt;PASSWORD&gt;@&lt;IP ADDRESS&gt;/test"))
+```
+
+&lt;br&gt;
+
+.center[ **Give me the list of top 10 places and their total counts**]
+
+---
+# Distribution Models - Distributed File Systems
+
+- How do we **store** and **access** *very large files* across **cheap** commodity devices ?
+
+--
+
+- There are two distribution models: **Sharding** and **Replication**
+
+  1. *Sharding:* split the file into smaller parts and distribute them across machines
+  2. *Replication:* put copies of the original data across machines.
+  
+&lt;img src="images/HDFS-1.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+# Distributed File System
+
+![](images/HDFS-2.png)
+---
+# Distributed File System
+
+![](images/HDFS-3.png)
+---
+# Distributed File System
+
+![](images/HDFS-4.png)
+---
+# Distributed File System
+
+![](images/HDFS-5.png)
+---
+# Distributed File System
+
+![](images/HDFS-6.png)
+---
+# Fault Tolerant Distributed File Systems 
+# Failure Event Occurs
+
+&lt;img src="images/HDFS-7.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+# Fault Tolerant Distributed File Systems 
+# Failure Event Occurs
+
+&lt;img src="images/HDFS-8.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+# Map-Reduce Distributed Aggregation
+
+- MongoDB system allows both distribution models. 
+
+- The MongoDB's aggregate framework offers limited functionalities.
+
+- How to do computing when data files (i.e., databases) distributed across multiple machines?
+
+--
+
+- Analogue: How would you **compute the number of occurrences** of each word in all the books **using a team of people?**
+
+---
+# Simple solution
+
+![](images/mapreduce-1.png)
+
+---
+# Simple solution
+
+&lt;img src="images/mapreduce-2.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+---
+# Simple solution
+
+![](images/mapreduce-3.png)
+
+---
+# Simple solution
+
+![](images/mapreduce-4.png)
+---
+# The Map Reduce Abstraction
+
+![](images/mapreduce-5.png)
+
+---
+# Key properties of Map and Reduce
+
+- **Deterministic MAP:** allows for re-execution on failure
+
+  - If some computation is lost we can always re-compute
+  
+  - Issue with samples?
+  
+--
+
+- **Commutative REDUCE:** allows for re-order of operations
+
+  - Reduce( A, B ) = Reduce ( B, A )
+  
+  - Example (addition): A + B = B + A
+  
+--
+
+- **Associative REDUCE:** allows for regrouping of operations
+
+  - Reduce( Reduce( A, B), C) = Reduce( A, Reduce( B, C))
+  
+  - Example (max): max(max(A, B), C) = max( A, max(B, C))
+
+---
+# Executing Map Reduce
+
+.pull-left[
+
+&lt;img src="images/doing-mr-1.png" width="25%" style="display: block; margin: auto;" /&gt;
+
+]
+
+.pull-right[
+
+&lt;br&gt;
+
+&lt;br&gt;
+
+
+&lt;br&gt;
+
+&lt;br&gt;
+![](images/doing-mr-2.png)
+
+]
+
+---
+.pull-left[
+
+&lt;img src="images/doing-mr-3.png" width="55%" style="display: block; margin: auto auto auto 0;" /&gt;
+
+]
+
+.pull-right[
+
+# Executing Map Reduce
+
+]
+---
+.pull-left[
+
+&lt;img src="images/doing-mr-4.png" width="100%" style="display: block; margin: auto auto auto 0;" /&gt;
+
+]
+
+.pull-right[
+
+# Executing Map Reduce
+
+&lt;br&gt;
+
+- The map function applied to a local part of the big file.
+
+- **Run in Parallel.**
+
+- Output is cached for fast recovery on node failure
+
+
+]
+
+---
+.pull-left[
+
+&lt;img src="images/doing-mr-4.png" width="100%" style="display: block; margin: auto auto auto 0;" /&gt;
+
+]
+
+.pull-right[
+
+# Executing Map Reduce
+
+&lt;br&gt;
+
+&lt;img src="images/doing-mr-5.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+- Reduce function can be run on many machines...
+
+]
+---
+
+.pull-left[
+
+&lt;img src="images/doing-mr-3.png" width="55%" style="display: block; margin: auto auto auto 0;" /&gt;
+
+]
+
+.pull-right[
+
+
+
+![](images/doing-mr-6.png)
+]
+
+---
+
+&lt;img src="images/doing-mr-7.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+&lt;img src="images/doing-mr-8.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+If part of the file or any intermediate computation is lost we can simply recompute it without recomputing everything.
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -1,0 +1,146 @@
+---
+title: "Principal Component Analysis"
+output: html_notebook
+---
+
+In this demo, we will apply the Principal Component Analysis (PCA) technique on non-text dataset and on text data. First, we start the demo with loading `tidyverse` and `tidytext` packages.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(tidytext)
+library(janeaustenr)
+```
+
+# PCA on the USArrests dataset
+
+One of the R built-in datasets is `USArrests`, containing statistics, in arrests per 100,000 residents for assault, murder, and rape, as well as the percentage of urban population in each of the 50 US states in 1973.  
+
+```{r}
+USArrests
+```
+
+*Note:* The state's names you saw on the screen when you examined the dataset was used as the row name, not part of the table. You can extract those names using the function `rownames()` like
+
+```{r}
+rownames(USArrests)
+```
+
+Let's take a quick look at the statistics (e.g., mean and standard deviation) of all columns
+
+```{r}
+USArrests %>% summarise_all(mean)
+USArrests %>% summarise_all(sd)
+```
+
+Not surprisingly, the variables have large difference in both means and variances.  If we failed to scale the variables before performing PCA, then most of the principal components that we observed would be driven by the Assault variable, since it has by far the largest mean and variance.
+
+We now perform principal components analysis using the prcomp() function, which is one of several functions in R that perform PCA. By default, the `prcomp()` function centers the variables to have mean zero. Using `scale=TRUE`, we will scale the variables to have standard deviation one.
+
+```{r}
+pr.out <- prcomp(USArrests, scale=TRUE)
+```
+
+The output from `prcomp()` contains a number of useful qunatities
+
+```{r}
+names(pr.out)
+pr.out$center
+pr.out$scale
+```
+
+The `rotation` matrix provides the principal component loadings; each column of `pr.out$rotation` contains the corresponsing principal component loading vector.
+
+```{r}
+pr.out$rotation
+```
+
+Lastly, the `x` matrix has the principal component score vectors as its columns. 
+
+```{r}
+pr.out$x
+```
+
+Oftenly, we would like to tidy the PCA results, which can be done with the `broom` package. The `tidy()` function gives the matrix `x` in the long form
+
+```{r}
+tidy(pr.out)
+```
+
+and principal component info can be obtained with option `matrix="pcs"`.
+
+```{r}
+tidy(pr.out, matrix = "pcs")
+```
+
+Visualization of the first two principal components is called *biplot*
+
+```{r}
+biplot(pr.out)
+```
+
+# PCA on text data
+
+We can apply PCA technique in the same manner as above when working with text data. Let's take a look at Jane Austen's Pride & Prejudice (like what we did in the demo on cosine similarity measure). We will start with dividing the whole novel into sections (made up of 10 lines of text), and tokenization
+
+```{r}
+austen_section_words <- austen_books() %>%
+  filter(book == "Pride & Prejudice") %>%
+  mutate(section = row_number() %/% 10) %>%
+  filter(section > 0) %>%
+  unnest_tokens(word, text) %>%
+  mutate(word = str_extract(word, "[a-z']+")) %>%
+  filter(!is.na(word)) %>%
+  anti_join(stop_words)
+austen_section_words
+```
+
+Adding the tf-idf for those tokens
+
+```{r}
+austen_section_words %<>% count(section, word) %>% 
+  bind_tf_idf(word, section, n)
+
+austen_section_words
+```
+
+The document-term matrix could look like
+
+```{r}
+austen_section_words %>% cast_dtm(section, word, tf_idf)
+```
+
+The matrix itself has the dimension 1,303 x 5,815 which is relative large and it takes a while to find the principal components. However, it is very sparse (7,541,662 entries in the matrix but only 35,283 of them are non-zero). There are more advanced methods to find principal components for the sparse matrices. We will use one of those methods, that is implemented in the package `irlba`
+
+```{r}
+install.packages("irlba")
+library(irlba)
+austen_section_matrix <- austen_section_words %>% cast_sparse(section, word, tf_idf)
+```
+
+You can try to apply the function `prcomp()` to compute PCA, but it will takes a while to complete
+
+```{r}
+# Can skip as it takes time to run
+pc <- prcomp(austen_section_matrix)
+```
+
+PCA on sparse matrices using `irlba` can be executed as
+
+```{r}
+pc <- prcomp_irlba(austen_section_matrix, n = 100, scale. = TRUE)
+tidy(pc, "pcs")
+tidy(pc)
+```
+
+We can visualize the principal component scores as
+
+```{r}
+tidy(pc) %>% filter(PC <= 6) %>%
+  ggplot(aes(row, value)) + geom_col(alpha = 0.8) + 
+  theme(axis.text.x = element_blank(), 
+          axis.ticks.x = element_blank(),
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank()) + 
+  facet_wrap( ~ PC, ncol = 2)
+```
+

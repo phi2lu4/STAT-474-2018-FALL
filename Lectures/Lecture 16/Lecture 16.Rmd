@@ -1,0 +1,222 @@
+---
+title: "STAT 474 &ndash; Techniques for Large Data Sets"
+subtitle: "Fall 2018"
+date: "October 1, 2018"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE, message=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(eval=FALSE)
+```
+
+# Introduction to MongoDB - Review
+
+--
+
+- Most popular NoSQL database system
+
+  - Document-oriented database system
+  
+  - Designed as RDBMS alternative
+
+--
+
+- MongoDB is made of databases, which are made of collections, which are made of documents, which are made of fields.
+
+--
+
+- MongoDB supports aggregation framework to transform and to combine multiple documents.
+
+  - Equivalent to aggregate functions and `GROUP BY` in SQL
+  
+--
+
+- MongoDB recently supports Map Reduce framework. However, it is not very efficient at this moment.
+
+---
+# Introduction to Hadoop
+
+
+```{r, out.width='50%', fig.align='center', echo=FALSE, eval=TRUE}
+knitr::include_graphics('images/hadoop-logo.png')
+```
+
+- First open-source map-reduce software system
+
+  - Managed by Apache foundation
+  
+- Apache top level project, open-source implementation of frameworks for reliable, scalable, distributed computing and data storage.
+
+---
+# Brief history of Hadoop
+
+Designed to answer the question: **“How to process big data with reasonable cost and time?”**
+
+![](images/crawl-web.gif)
+
+---
+# Search engines in 1990s
+
+.pull-left[
+![](images/search-engine-1.png)
+]
+
+.pull-right[
+![](images/search-engine-2.png)
+]
+
+---
+# Google search engines
+
+![](images/google.png)
+---
+# Google Origins
+
+![](images/google-origins.png)
+---
+# Brief Hadoop history timeline
+
+- **2005:** Doug Cutting and Michael J. Cafarella developed Hadoop to support distribution for the *Nutch* search engine project.
+
+  - The project was funded by Yahoo.
+
+- **2006:** Yahoo gave the project to Apache Software Foundation.
+
+- **2008:** Hadoop Wins Terabyte Sort  Benchmark (sorted 1 terabyte of data in 209 seconds, compared to previous record of 297 seconds)
+
+- **2010:** Hadoop's *Hbase*, *Hive* and *Pig* subprojects completed, adding more computational power to Hadoop framework
+
+- **2011:** *ZooKeeper* Completed
+
+- **2013:** Hadoop 1.1.2 and Hadoop 2.0.3 alpha. 
+
+---
+# What is Hadoop?
+
+- An open-source software framework that supports data-intensive distributed applications, licensed under the Apache v2 license
+
+--
+
+Goals / Requirements: 
+
+- Abstract and facilitate the storage and processing of large and/or rapidly growing data sets
+  
+  - Structured and non-structured data
+    
+  - Simple programming models
+
+- High scalability and availability
+
+- Use commodity (cheap!) hardware with little redundancy
+
+- Fault-tolerance
+
+- Move computation rather than data
+
+---
+# Hadoop Properties
+
+- Data is distributed immediately. Nodes prefer to process local data to minimize traffic.
+
+- Data is stored in blocks of a fixed size (usually 128 MB)
+
+- A computation is referred to as a job; Jobs are broken into tasks, where each individual node performs the task on a single block of data
+
+- Jobs are written at a high level without concern for network programming, time,
+or low-level infrastructure.
+
+-  Jobs are fault tolerant usually through task redundancy, and can operate in parallel.
+
+---
+# Hadoop Architecture
+
+![](images/hadoop.png)
+
+
+---
+# What is Hadoop cluster
+
+- A cluster is a collection of machines that operate in a coordinated fashion. Individual machines are called nodes.
+
+- Hadoop is no hardward, but a software that runs on a cluster (more like Windows, Mac OSX, Linux, etc.)
+
+- Two primary components: HDFS (Hadoop Distributed File System) and YARN (Yet Another Resource Negotiator)
+
+  - They are software that run in the background amd do not required user input.
+
+---
+# Hadoop Clusters
+
+Each node in the cluster is identified as
+
+- *Master nodes:* 
+  
+  - run coordinating services for Hadoop workers. 
+    
+  - are the entry points for user access 
+    
+- *Worker nodes:* 
+  
+  - majority of the computers in the cluster
+    
+  - accept tasks from master nodes (either to store or retrieve data or run a particular application)
+    
+  - A distributed computation is run by parallelizing the analysis across worker nodes.
+    
+---
+# Hadoop Clusters
+
+- For HDFS, the master and worker services (i.e., software/processes) are as:
+
+  - *NameNode (Master):* stores the directory tree, file metadata, and the locations of files
+  
+  - *Secondary NameNode (Master):* perform housekeeping tasks and checkpointing on behalf of the NameNode
+  
+  - *DataNode (Worker):* stores and manages HDFS blocks on the local disk.
+
+---
+# HDFS 
+
+.pull-left[
+
+Example:
+
+- The NameNode hold metadata for two files:
+
+  - `Foo.txt` (300 MB) and `Bar.txt` (200 MB)
+  
+- The DataNodes hold the actual blocks
+
+  - Each block is 128 MB in size
+  
+  - Each block is replicated 3 times
+  
+  - Blocks report periodically to NameNode
+]
+
+.pull-right[
+![](images/hdfs.jpg)
+]
+---
+# Hadoop Clusters
+
+- For YARN,
+
+  - *ResourceManager (Master) :* Allocates and monitors available cluster resources to applications as well as handling scheduling of jobs on the cluster.
+  
+  - *ApplicationMaster (Master) :* Coordinates a particular application being run on the cluster as scheduled by the ResourceManager.
+  
+   - *NodeManager (Worker) :* Runs and manages processing tasks on an individual node as well as reports the health and status of tasks as they’re running.
+   
+- Other softwares like `JobHistory` and `ZooKeeper` also help managing the cluster operation.
+---
+# A Hadoop Cluster
+
+![](images/hadoop-cluster.jpg)

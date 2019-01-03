@@ -1,0 +1,202 @@
+---
+title: "Lab 3 - Federal Election Commision Data"
+date: "Due: September 21, 2018"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE)
+```
+
+In this homework, we're going to explore the Federal Election Commission's data on the money exchanged during the 2016 election.
+
+This homework has two main parts:
+
+  1. Answering questions and computing descriptive statistics on the data
+  
+  2. Conducting a hypothesis test
+  
+Almost all of our computations will be done using SQL while `ggplot2` will be used for graphics.
+
+# Getting Started
+
+For this labs, we will work with **MySQL** database system on the cloud. The IP address of the DBMS and the access information are given in class.
+
+Cloud techonolies have become more popular today, and it worths your time and effort to learn them. All cloud providers give out free services for their first time users with different degree of technical difficulty and restrictions. The popular cloud service **Heroku** ([www.heroku.com](www.heroku.com)) are easy and  straightforward to deloy. Others like Amazon AWS, Google Cloud or Microsoft Azure require some experience with Linux shell.
+
+```{r, message=FALSE}
+library(DBI)
+library(RMySQL)
+library(tidyverse)
+
+con <- dbConnect(MySQL(), host = "...", user = "...", password = "...", dbname = "fec_15_16")
+```
+
+To explore tables in MySQL, you can simply list all available tables 
+
+```{r}
+dbGetQuery(con, 'SHOW TABLES;')
+```
+
+In MySQL, you can find out about the structure of a table (relation schema) by executing the `DESCRIBE` statement
+
+```{r}
+dbGetQuery(con, 'DESCRIBE indiv;')
+```
+
+# Table Descriptions
+
+Here is a list of the tables in the database. Each table links to the documentation on the [FEC page](http://www.fec.gov/finance/disclosure/ftpdet.shtml) for the dataset.
+
+Note that the table names here are slightly different from the ones in lecture. Consult the FEC page for the descriptions of the tables to find out what the correspondence is.
+
+- [`cand`](www.fec.gov/finance/disclosure/metadata/DataDictionaryCandidateMaster.shtml): Candidates table. Contains names and party affiliation.
+- [`comm`](www.fec.gov/finance/disclosure/metadata/DataDictionaryCommitteeMaster.shtml): Committees table. Contains committee names and types.
+- [`link`](www.fec.gov/finance/disclosure/metadata/DataDictionaryCandCmteLinkage.shtml): Committee to candidate links.
+- [`indiv`](www.fec.gov/finance/disclosure/metadata/DataDictionaryContributionsbyIndividuals.shtml): Individual contributions. Contains recipient committee ID and transaction amount.
+- [`inter_comm`](classic.fec.gov/finance/disclosure/metadata/DataDictionaryContributionstoCandidates.shtml: Committee-to-committee contributions. Contains donor and recipient IDs and transaction amount.
+- [`comm_cand`](classic.fec.gov/finance/disclosure/metadata/DataDictionaryContributionstoCandidates.shtml): Committee-to-candidate contributions. Contains donor and recipient IDs and transaction amount.
+
+How big are these table? Let's look at the `indiv` table. *Note:* It might take 2-3 minutes just to query the size of the table.
+
+```{r}
+dbGetQuery(con, 'SELECT COUNT(*) FROM indiv;')
+```
+
+# Browsing Tables: `LIMIT` and sampling
+
+Database tables are often big--hence the use of a database system. When browsing them at first, we may want to look at exemplary rows: e.g., an arbitrary number of rows, or a random sample of the rows.
+
+To look at all of the data in the individual table, we would simply write:
+
+```
+SELECT * FROM indiv;
+```
+
+But that would return 20,347,829 rows into our RStudio notebook's memory, and perhaps overflow the RAM in your computer (not to memtion the speed of data traveling  through the network). Instead, we could limit the size of the output to the forst 3 rows as follows:
+
+```{r}
+dbGetQuery(con, '
+  SELECT * 
+  FROM indiv
+  LIMIT 3;
+')
+```
+
+### Some notes on the `LIMIT` clause:
+
+1. Not only does it **produce a small output**, it's **quite efficient**: the database system **stops iterating over the table after producing the first three rows**, saving the work of examining the other nearly 40 million rows.
+
+2. Recall that **relations have no intrinsic order**, so this is **some arbitrary choice of 3 rows**. Two issues to keep in mind:
+
+  a. This is a **biased choice of rows**. Very likely these are the first 3 rows stored in some disk file managed by the database, which may (for example) be the first 3 rows that were entered into the database, so they may not be representative of rows entered later.
+
+  b. The **result is non-deterministic**. Given that tables are not guaranteed to have an intrinsic order, it is considered correct for an SQL engine to return any 3 rows that satisfy this query, and return a different 3 rows each time depending on the cached data.
+  
+## Constructing a Bernoulli Sample
+
+As data scientists, we should be concerned about spending much time looking at a biased subset of our data. Instead, we might want an i.i.d. random sample of the rows in the table. There are various methods for sampling from a table. A simple one built into many database systems including MySQL is to use the function `RAND()`, which generates a uniformly distributed number between 0 (inclusive) and 1 (exclusive).
+
+```{r}
+dbGetQuery(con, '
+SELECT * 
+FROM indiv
+WHERE RAND() < .000001;
+')
+```
+
+Three things to note relative to our previous `LIMIT` construct:
+
+1. It scales linearly with the table size by iterating through every row in the table
+
+2. The **number of rows returned by Bernoulli sampling is probabilistic.** For a table with $N$ rows and a sampling probability $p$, the output size comes from a binomial distribution with mean $Np$ and variance $Np(1 - p)$. For a very small $N$, the variance means we could easily get 0 rows back when trying out query!.
+
+3. If we don't know the size of the table, **it's hard to choose a practical sampling probability**. First we want to count up the number of rows $N$ (see the discussion of aggregation queries below), to inform us of a good $p$ to choose to get our desired output size. That means yet another full pass of the table to compute the count before we compute the sample!
+
+For these reasons, if we want a proper i.i.d sample, **it's a good idea to compute a nice-sized sample and store it**, keeping it reasonably large for more general use. Since we will not be updating and rows in our `indiv` table, we can do this without worrying that the sample will get "out of date" with respect to the context of `indiv`.
+
+We can use `CREATE TABLE AS SELECT ...` pattern to create a table the save the output of a query:
+
+```{r}
+dbSendQuery(con,' DROP TABLE IF EXISTS indiv_sample');
+dbSendQuery(con,'
+  CREATE TABLE indiv_sample AS
+  SELECT *
+  FROM indiv
+  WHERE RAND() < .001;
+')
+```
+
+## A simple random sample of fixed size
+
+Here is an alternative method to construct a random sample of a fixed size. Note that this is not as efficient and will take several minutes to complete. (We won't execute the following query)
+
+```
+CREATE TABLE indiv_sample2 AS
+SELECT *
+FROM indiv
+ORDER BY u
+LIMIT 20000;
+```
+
+# Descriptive Statistics
+
+OK, we already had a peek at the `indiv` table. Now let's look at specific attributes (columns) relates to who is donating how much. 
+
+In addition to referencing the columns of individual in the select clause, we can also derive new columns by writing field-level (so-called "scalar") functions. Typically we reference some table columns in those functions.
+
+In our case, let's compute the log of transaction_amt for subsequent plotting. SQL comes with many typical functions you can use in this way, and MySQL is particularly rich on this front; see the [MySQL manual](dev.mysql.com/doc/refman/8.0/en/functions.html) for details.
+
+We'll look at `indiv_sample` rather than `indiv` while we're just exploring.
+
+```{r}
+dbGetQuery(con,'
+SELECT name, state, cmte_id,
+       transaction_amt, log(transaction_amt)
+FROM indiv_sample
+LIMIT 10;
+')
+```
+
+We can combine SQL with R in the following way:
+
+```{r}
+result <- dbGetQuery(con,'
+SELECT name, state, cmte_id,
+       transaction_amt, log(transaction_amt)
+FROM indiv_sample;
+')
+ggplot(result) + geom_histogram(aes(x = transaction_amt))
+```
+
+**Question 1:** Plot the distribution of contribution amounts on the log scale.
+
+**Question 2:** Examining the tail by creating multiple histogram of donations more that \$5,000, \$50,000, \$1,000,000.
+
+# Views
+
+In the lecture, we have learned about `views` in SQL. Here is an example:
+
+```{r}
+dbSendQuery(con, 'DROP VIEW IF EXISTS date_stats;')
+dbSendQuery(con,'
+CREATE VIEW date_stats AS
+SELECT 
+    transaction_dt AS day,
+    min(transaction_amt) as min, 
+    avg(transaction_amt) as avg, 
+    stddev(transaction_amt) as stddev,
+    max(transaction_amt) as max
+FROM indiv
+GROUP BY transaction_dt
+ORDER BY day;
+'
+)
+```
+
+We can take a look at the view:
+```{r}
+dbGetQuery(con,'SELECT * FROM date_stats LIMIT 5;')
+```
+
+**Question 3:** Find out the 5 dates the largest donation had made.

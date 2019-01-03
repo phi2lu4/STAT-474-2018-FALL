@@ -1,0 +1,120 @@
+---
+title: "Lab 2 - Multi-table Queries"
+output: html_notebook
+---
+
+
+We start with loading those packages into the current session:
+```{r, message=FALSE}
+library(DBI)
+library(RSQLite)
+```
+
+Next, we will treat the memory as our database:
+
+```{r}
+con <- dbConnect(SQLite(), dbname=":memory:")
+```
+
+Run the following codes. They are setting up the tables that we will use in this lab.
+
+```{r, message=FALSE}
+dbSendQuery(con, 'DROP TABLE IF EXISTS R;')
+dbSendQuery(con, 'DROP TABLE IF EXISTS S;')
+dbSendQuery(con, 'DROP TABLE IF EXISTS T;')
+dbSendQuery(con, 'CREATE TABLE R (A int);')
+dbSendQuery(con, 'CREATE TABLE S (A int);')
+dbSendQuery(con, 'CREATE TABLE T (A int);')
+for (i in 1:6) {
+  query <- paste0("INSERT INTO R VALUES (", i, ");")
+  dbSendQuery(con, query)
+}
+for (i in seq(1, 10, 2)) {
+  query <- paste0("INSERT INTO S VALUES (", i, ");")
+  dbSendQuery(con, query)
+}
+for (i in seq(1, 11, 3)) {
+  query <- paste0("INSERT INTO T VALUES (", i, ");")
+  dbSendQuery(con, query)
+}
+```
+
+
+```{r, message=FALSE}
+dbSendQuery(con, 'DROP TABLE IF EXISTS product;')
+dbSendQuery(con, 'DROP TABLE IF EXISTS company;')
+dbSendQuery(con,'pragma foreign_keys = ON; -- WARNING by default off in sqlite)')
+dbSendQuery(con, '
+CREATE TABLE company (
+    cname VARCHAR PRIMARY KEY, -- company name uniquely identifies the company.
+    stockprice MONEY, -- stock price is in money 
+    country VARCHAR); -- country is just a string
+')
+dbSendQuery(con,'
+INSERT INTO company 
+VALUES (\'ToyWorks\', 25.0, \'USA\'),
+       (\'ToyFriends\', 65.0, \'China\'),
+       (\'ToyCo\', 15.0, \'China\');
+')
+
+dbSendQuery(con,'
+CREATE TABLE product(
+       pname VARCHAR, -- name of the product
+       price MONEY, -- price of the product
+       category VARCHAR, -- category
+       manufacturer VARCHAR, -- manufacturer
+       PRIMARY KEY (pname, manufacturer),
+       FOREIGN KEY (manufacturer) REFERENCES company(cname));
+')
+dbSendQuery(con,'
+INSERT INTO product 
+VALUES (\'Pikachu\', 19.99, \'Toy\', \'ToyWorks\'),
+       (\'Pikachu\', 19.99, \'Toy\', \'ToyFriends\'),
+       (\'Pokeball\', 29.99, \'Electronic\', \'ToyCo\'),
+       (\'Bulbasaur\', 149.99, \'Toy\', \'ToyFriends\'),
+       (\'Charizard\', 203.99, \'Toy\', \'ToyCo\'),
+       (\'PokeCamera\', 19.99, \'Electronic\', \'ToyWorks\');
+')
+```
+
+**Question 1:**
+
+For three tables $R,S,T$ that only have one attribute $A$:
+
+- R = {1,2,3,4,5}
+- S = {1,3,5,7,9}
+- T = {1,4,7,10}
+
+Can you write a query to select $R \cap (S \cup T)$- in other words elements that are in $R$ and either $S$ or $T$?
+
+Write your query here:
+```{r}
+dbGetQuery(con,'
+
+')
+```
+
+Now test your query above for the case where $S = \emptyset$- what happens and why?
+
+Execute the below, then re-run your query above
+
+```{r}
+dbSendQuery(con, 'DELETE FROM S;)')
+```
+
+
+
+**Question 2:**
+
+- Schema is the same as before
+
+> Product (pname, price, category, manufacturer)
+> Company (cname, stockPrice, country)
+
+Write your query to find all categories of products that are made by Chinese companies
+
+```{r}
+dbGetQuery(con,'
+
+')
+```

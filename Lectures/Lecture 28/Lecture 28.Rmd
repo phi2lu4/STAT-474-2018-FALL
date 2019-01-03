@@ -1,0 +1,173 @@
+---
+title: "STAT 474 &ndash; Techniques for Large Data Sets"
+subtitle: "Fall 2018"
+date: "November 9, 2018"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(eval=FALSE)
+library(stringr)
+library(sentimentr)
+```
+
+# Review/Recap
+
+- How to quantify what a document is about?
+
+  - So far, Bag of words, TF-IDF
+
+--
+
+- TF-IDF is intended to measure how important a word is to a document in a collection (or corpus) of documents.
+
+  - Rare words are more informative than common words.
+  
+  - Trade-off between the number of occurence and the rarity of a word
+  
+--
+
+- A document can be represented by real-valued vector (many different approaches).
+
+  - A corpus (collection of documents) can be represented by a matrix, made up of document vectors.
+  
+---
+# Binary incidence matrix
+
+|  | ANTHONY | BRUTUS | CAESAR | CALPURNIA | CLEOPATRA | MERCY | WORSER |... |
+|--|---------|--------|--------|-----------|-----------|-------|-----|-----|
+| Anthony and Cleopatra | 1 | 1 | 1 | 0 | 1 | 1 | 1| ... |
+| Julius Caesar | 1 | 1 | 1 | 1 | 0 | 0 | 0 | ... |
+| The Tempest | 0 | 0 | 0 | 0 | 0 | 1 | 1 | ... |
+| Hamlet | 0 | 1 | 1 | 0 | 0 | 1 | 1 | ... |
+| Othello | 0 | 0| 1 | 0 | 0 | 1 | 1 | ... |
+| Macbeth | 1 | 0 | 0 | 0 | 0 | 1 | 1 | ...|
+| ... | ... | ... | ... | ... | ... | ... | ... |
+
+
+Each socument is represented as a **binary vector**
+
+---
+# Count matrix
+
+|  | ANTHONY | BRUTUS | CAESAR | CALPURNIA | CLEOPATRA | MERCY | WORSER |... |
+|--|---------|--------|--------|-----------|-----------|-------|-----|-----|
+| Anthony and Cleopatra | 157 | 4 | 232 | 0 | 57 | 2 | 2 | ... |
+| Julius Caesar | 73 | 157 | 227 | 10 | 0 | 0 | 0 | ... |
+| The Tempest | 0 | 0 | 0 | 0 | 0 | 3 | 1 | ... |
+| Hamlet | 0 | 2 | 2 | 0 | 0 | 8 | 1 | ... |
+| Othello | 0 | 0 | 1 | 0 | 0 | 5 | 1 | ... |
+| Macbeth | 1 | 0 | 0 | 0 | 0 | 8 | 5 | ...|
+| ... | ... | ... | ... | ... | ... | ... | ... |
+
+
+Each document is now represented as a count vector.
+
+---
+# TF-IDF weight matrix
+
+|  | ANTHONY | BRUTUS | CAESAR | CALPURNIA | CLEOPATRA | MERCY | WORSER |... |
+|--|---------|--------|--------|-----------|-----------|-------|-----|----|
+| Anthony and Cleopatra | 5.25 | 3.18 | 8.59 | 0 | 2.85 | 1.51 | 1.37 | ... |
+| Julius Caesar | 3.18 | 6.10 | 2.24 | 1.54 | 0 | 0 | 0 | ... |
+| The Tempest | 0 | 0 | 0 | 0 | 0 | 1.90 | 0.11 | ... |
+| Hamlet | 0 | 1 | 1.51 | 0 | 0 | 0.12 | 4.15 | ... |
+| Othello | 0 | 0 | 0.25 | 0 | 0 | 5.25 | 0.25 | ... |
+| Macbeth | 0.35 | 0 | 0 | 0 | 0 | 0.88 | 1.95 | ...|
+| ... | ... | ... | ... | ... | ... | ... | ... |
+
+Each document is now represented as a real-valued vector of tf-idf weights
+
+---
+# The Vector Space Models
+
+- Each document is now presented as a real-valued vector of weights. So, documents are points/vectors for this space.
+
+--
+
+- The total number of distinct words across all documents is the dimension of the vector space. It tends to be very large.
+
+- Terms are axes of the space
+
+--
+
+- Can be extended by defining terms as phrases (instead of single words)
+
+  - The demo will illustrate how to do it
+
+---
+# How to formalize the similarity?
+
+- Many questions can be solved with the measure of similarity.
+
+  - Sport articles are *similar*. A document is about sport if it is similar to a corpus about sport.
+  
+--
+  
+- **Approach:** proximity $\approx$ negative distance
+
+  - Two documents are similar if their representive points in the term model space are close to each other.
+  
+  - How to define distance between two documents?
+  
+---
+# Distance Metrics
+
+- In Calculus, we learned about the Euclidean distance.
+
+  - Example: $A = (x_1, y_1, z_1)$, and $B = (x_2, y_2, z_2)$
+  
+$$d(A, B) = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2 + (z_1 - z_2)^2}$$
+
+- Similarly, mathematicians usually use **Mahattan distance**
+
+
+$$d(A, B) = |x_1 - x_2| + |y_1 - y_2| + |z_1 - z_2|$$
+
+
+```{r, out.width='40%', fig.align='center', echo=FALSE, eval=TRUE}
+knitr::include_graphics('images/distance-metrics.jpg')
+```
+
+
+---
+# Why distance is a bad idea
+
+- Euclidean distance is **large** for vectors of **different lengths**.
+
+--
+
+<br>
+
+```{r, out.width='100%', fig.align='center', echo=FALSE, eval=TRUE}
+knitr::include_graphics('images/issue-distance.png')
+```
+
+- Document `q` and `d2` are similar but far apart from each other.
+---
+# Use angle instead of distance
+
+```{r, out.width='50%', fig.align='center', echo=FALSE, eval=TRUE}
+knitr::include_graphics('images/angle-distance.png')
+```
+
+--
+
+- Use the cosine of the angle to measure the similarity.
+
+  - Cosine is a monotonically decreasing function of the angle for the interval $[0, \pi]$.
+
+  - How to compute the cosine? Something from Calculus II.
+  
+---
+class: middle, center
+
+# Demo in R
+

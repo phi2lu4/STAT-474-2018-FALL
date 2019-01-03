@@ -1,0 +1,133 @@
+---
+title: "STAT 474 &ndash; Techniques for Large Data Sets"
+subtitle: "Fall 2018"
+date: "September 26, 2018"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE, message=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(eval=FALSE)
+library(mongolite)
+example <- mongo(collection = "example", 
+                 url = "mongodb://localhost")
+example$remove('{}')
+```
+
+# Introduction to MongoDB - Review
+
+- What is MongoDB? How can we discribe the MongoDB?
+
+--
+
+- We have been working with several MongoDB functions: `insert()`, `find()`, `count()`, `distinct()` and `iterate()`. Can you discribe the functionality of each function?
+
+--
+
+- MongoDB query syntax - following JSON structure: 
+
+  - `<field>:<value> `
+  
+  - `<field>: { <operator>: <value> }`
+
+  - Write a query to find all the robberies or theft incidents in 2018 from Chicago's crime data, assuming that the handler for the collection is `crimes`.
+  
+---
+# Basic CRUD Operations in MongoDB
+
+- **CRUD** stands for *creating*, *reading*, *updating* and *deleting*.
+
+- We have worked with *creating* via `insert()` function.
+
+  - Accepts data frame or JSON strings (one string for each document)
+  
+  - Atomicity: single document insertion is atomic, while multiple-document insertion is not.
+  
+```{r}
+example <- mongo(collection = "<YOUR OWN COLLECTION NAME>", 
+        url = "mongodb://<USERNAME>:<PASSWORD>@<IP ADDRESS>/test")
+
+queries <- c('{"name" : "Peter", "age" : 99, "loves": ["apple"]}',
+      '{"name" : "Ruth", "age" : 93, "loves": ["apple", "sugar"]}',
+      '{"name" : "Jack", "loves" : ["bananas"]}');
+example$insert(queries)
+example$find()
+```
+
+---
+# Basic CRUD Operations in MongoDB
+
+- We have worked with *reading* via `find()` function.
+
+  - `fields=` option allows selection of listed fields
+  
+  - `sort=` option alows sorting
+  
+  - *Activity:* What happen when you change the number 1? Try other numbers, including -1. Comment and take note to yourself about the sorting feature.
+  
+```{r}
+example$find('{}', sort = '{"age" : 1}')
+```
+
+  
+---
+# Basic CRUD Operations in MongoDB
+
+- *Deleting* operation is straightforward
+
+  - To delete the whole collection, use `drop()` as in `crimes$drop()`. In practice, there is very few time when we want to delete a collection.
+  
+  - More often, we need to remove one/many documents: use `remove(query = '{}')`.
+  
+---
+# Updating in MongoDB
+
+- The function `update()` takes two arguments: the selector (i.e. WHERE in SQL) to use and what updates to apply to fields.
+
+```{r}
+example$update('{"name" : "Peter"}', '{"$set" : {"age" : 90}}')
+```
+
+- *Activity:* Verify the effect of updating command. What happens if you forget the `$set` operator?
+
+---
+# Adding value to an array
+
+```{r}
+example$update('{"name" : "Peter"}', 
+               '{"$push" : {"loves" :  "candy"}}')
+```
+
+- *Activity:* What happens if we mistakenly use `$set` instead? 
+---
+# Upserts
+
+- An upsert updates the document if found or inserts it if not.
+
+```{r}
+example$update('{"name": "Bob"}','{"$inc":{"age" : 1}}', upsert = T)
+```
+
+- *Activity:* What do you observe when running the above query? Comment on the effect of `$inc`?
+
+---
+# Updating in MongoDB
+
+- I'd like to add a field `vacinated` (boolean type) with the value of `TRUE` for all documents. What do you observe when running the below query?
+
+```{r}
+example$update('{}', '{"$set" : {"vacinated" : true}}')
+```
+
+--
+
+- Use the option `multiple = TRUE` for multiple updates. 
+
+- *Activity:* Try the `multiple = TRUE` option with above query and verify the expected result.
+

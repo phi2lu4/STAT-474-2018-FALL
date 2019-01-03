@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-11-07" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### November 7, 2018
+
+---
+
+
+
+
+# Sentiment Analysis - Review
+
+- Sentiments means feelings, emotions, attitudes, subjective impressions, but not facts.
+
+- Using NLP (natural language process), statistics, or machine learning methods to extract, identify, or otherwise characterize the sentiment content of a text unit
+
+--
+
+- Keyword methods
+  
+  - Use lists of keywords with sentiment annotation
+  
+  - Sentiment of a text segment is the total sentiment "score" of all available tokens
+  
+  - Different sentiment lists give slightly different, but similar results.
+
+--
+
+- **What should we aware when performing sentiment analysis?**
+
+---
+# Feature generation for other purposes
+
+- How to quantify what a document is about?
+
+- With a collection of documents, how should we divide into natural groups so that we can understand them separately?
+
+- With a bunch of emails, how to distinguish the regular versus the spam ones?
+
+--
+
+.center[ How to extract/generate features/variables from a collection of documents? ]
+
+--
+
+- Basic: Bag of words, TF-IDF
+
+- Advanced: word embedding (Word2Vec) - words or phrases from the vocabulary are mapped to vectors of real numbers.
+
+---
+# Bag of words
+
+- Use the occurrence (or frequency) of each word to represent a document.
+
+- Example: document = "John likes to watch movies. Mary likes movies too."
+
+  - Break up words: "John", "likes", "to", "watch", "movies", "Mary", "likes", "movies", "too"
+  
+  - Bag of words: `{"John":1, "likes":2, "to":1, "watch":1, "movies":2 ,"Mary":1, "too":1}`
+
+--
+
+- Can be achieved by tokenizing and count distinct words.
+
+- When working with more than one document (e.g., with a corpus), we usually use the document-term matrix.
+
+---
+# Word and Document Frequency: TF-IDF
+
+- Issues with bag of words:
+
+  - Longer documents have more words
+  
+  - Stop words are the most common.
+  
+--
+
+- **inverse document frequency** (IDF): decreases the weight for commonly used words and increases the weight for words that are not used very much
+
+- TF-IDF = term frequency - inverse document frequency. Computed as the product of term frequency and quantity for IDF.
+
+`$$\mbox{IDF (term)} = \log\left(\frac{n_{\mbox{documents}}}{n_{\mbox{documents containing term}}}\right)$$`
+
+- The statistic TF-IDF is intended to measure how important a word is to a document in a collection (or corpus) of documents.
+
+- *Toy example:* d1 = "this a is a sample", d2 = "example: this another example is another example"
+
+---
+# Variants of TF-IDF
+
+- The term "frequency" in the simplest choice can be the *raw count*
+
+  - The count grows as the length of the document increases.
+  
+--
+
+- We can adjust the term frequency as the proportion of the given term, which is the ratio between the *raw count* and the total number of words.
+
+  - Most commonly used, but the ratio tends to be very small.
+  
+--
+
+- The middle ground: *raw count* on the logarithmical scale.
+
+$$ \mbox{TF} = 1 + \log(\mbox{raw count}) $$
+
+---
+# Justification of IDF
+
+- The IDF has the connection with the Zipf's law.
+
+  - Named after the the linguist George Zipf
+  
+  - Given some corpus, the frequency of any word is inversely proportional to its rank in the frequency table
+  
+--
+
+- Rare words are more informative than common words. 
+
+  - High weight for rare words and low weight for common words
+  
+  - Candidate is the document frequency or proportion of containing document.
+  
+  - Use the log scale to "dampen" the effect of IDF.
+  
+--
+
+- IDF presents an attempt to put words in the probability framework.
+
+---
+# The Vector Space Models
+
+- Also known as **Term Vector Model**, representing text documents as numeric vectors of specific terms. Both bag of words and TF-IDF are vector space models.
+
+--
+
+- A vector space can be denoted as
+
+`$$VS = \{W_1, W_2, \ldots, W_n\}$$`
+where there are `\(n\)` distinct words across all documents.
+
+- A document `\(D\)` in the collection can be represented in this space as
+
+`$$D = \{ w_{D1}, w_{D2}, \ldots, w_{Dn}\}$$`
+where `\(w_{Di}\)` denoted the weight for word `\(i\)` in the document `\(D\)`.
+
+--
+
+- Binary incidence: `\(w_{Di}\)` is either 0 or 1, corresponding to the word's presence in the document
+
+--
+
+- Bag of words: `\(w_{Di}\)` is the occurrence of the corresponding word (i.e., *raw count*) in the document `\(D\)`.
+
+--
+
+- TF_IDF: use weight tf-idf as the value for `\(w_{Di}\)`
+---
+# The Vector Space Models
+
+- Each document is now presented as a real-valued vector of weights
+
+- The total number of distinct words across all documents is the dimension of the vector space
+
+- Terms are axes of the space
+
+- Documents are **points** or **vectors** in this space
+
+- Very high-dimensional: tens of millions of dimensions when you apply this to web search engines.
+
+- Each vector is very space, as most entries are zero.
+
+- Can be extended by defining terms as phrases (instead of single words)
+
+---
+# Jane Austen example in R
+  
+- Examine the distribution of word counts.
+
+- Verify the Zipf's law
+
+- Using TF-IDF to explore six Jane Austen's novels
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

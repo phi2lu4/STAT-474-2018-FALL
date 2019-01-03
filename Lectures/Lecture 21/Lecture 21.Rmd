@@ -1,0 +1,62 @@
+---
+title: "STAT 474 &ndash; Techniques for Large Data Sets"
+subtitle: "Fall 2018"
+date: "October 17, 2018"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(eval=FALSE)
+```
+
+class: middle, center
+
+# Getting Data from the Web
+
+---
+# Web Scrapping
+
+- Data and information on the web is growing exponentially.
+
+- Web scraping is a technique for converting the data present in unstructured format (HTML tags) over the web to the structured format which can easily be accessed and used.
+
+--
+
+- Ways to scrap data:
+
+  1. Human Copy-Paste
+  
+  2. Text pattern matching
+  
+  3. API Interface
+  
+  4. DOM Parsing
+---
+# Simple Web Scrapping with R - rvest package
+
+- Loads tables from web pages
+
+  - Looks for `<table></table>`
+  
+  - Table needs to be **well formatted**
+  
+  - Returns a *list* of *DataFrames*
+  
+- Can load *directly from URL*
+
+  - Careful! Data changes. Save a copy with your analysis
+  
+- You will often need to do additional transformations to prepare the data.
+
+---
+class: middle, center
+
+# Demo
+ 

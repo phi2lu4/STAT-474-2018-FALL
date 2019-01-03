@@ -1,0 +1,176 @@
+---
+title: "Lab 4 - Introduction to MongoDB with R"
+date: "Due: September 28, 2018"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE)
+```
+
+
+# Getting Started
+
+For this labs, we will work with **MongoDB** database on the cloud. The IP address of the DBMS and the access information are given in class.
+
+While R/RStudio provides a nice interface to interact with MongoDB, its data types and data structures the complete replication of real experience on the MongoDB shell (i.e., console). In the first part of this lab, we will recreate the same example we did on the MongoDB shell. It is your job to take note on the difference between two different environment.
+
+```{r, message=FALSE}
+# Uncomment the following to install the package. You only need to do it once.
+# install.packages("mongolite")
+library(mongolite)
+```
+
+```
+example <- mongo(url = "mongodb://<USERNAME>:<PASSWORD>@<IP ADDRESS>/<DB NAME>")
+```
+
+One of the restriction when using R to interact with MongoDB is the range on administration functions. Whenever we connect to MongoDB using the R function `mongo()`, we can only work with a single collection. Without specifying, R will collect to collection `test` (it will create one if it does not exist).
+
+To create the collection in MongoDB
+```{r}
+example <- mongo(collection = "myExample",
+                 url = "mongodb://<USERNAME>:<PASSWORD>@<IP ADDRESS>/<DB NAME>")
+```
+
+To insert a document into MongoDB, we use the function `insert()`
+
+```{r}
+example$insert('{"name" : "Peter", "age" : 99}')
+```
+
+**Question 1:** Run the following code and describe the difference between output from MongoDB shell and from R's `mongolite`
+
+```{r}
+example$find('{}')
+```
+
+We continue to insert two more documents. The function `insert()` allows us to input multiple documents at the same time.
+
+```{r}
+queries <- c('{"name" : "Ruth", "age" : 93}',
+               '{"this is" : "bananas", "schema" : "LOL"}') 
+example$insert(queries)
+```
+
+**Question 2:** When query the database, is the return data truly schema-less? Describe what you see and remark on the format of query output.
+
+When dealing with the schema-less document, we might want to see the document one-by-one. Since R does not support JSON format, it will convert each document into `list` type
+
+```{r}
+pointer <- example$iterate()
+pointer$one()
+```
+
+```{r}
+pointer$one()
+```
+```{r}
+pointer$one()
+```
+```{r}
+pointer$one()
+```
+
+Other options for `iterate()` are `json()` (JSON in `string` format), `batch()` (all in `list` of `list`), and `page()` (in table).
+
+# More about query syntax
+
+In part 2 of the lab, we will work with the crimes data [data.gov](https://catalog.data.gov/dataset/crimes-2001-to-present-398a4), which contains reported incidents of crime (with the exception of murders where data exisits for each victim) that occurred in the City of Chicago since 2001.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+crimes <- mongo(collection="crimes", db = "Chicago",
+                url = "mongodb://<USERNAME>:<PASSWORD>@<IP_ADDRESS>/test")
+```
+
+MongoDB uses [JSON based syntax](https://docs.mongodb.com/manual/tutorial/query-documents/) to query documents. The empty query `{}` means: select all data. The same query parameter is used for multiple operations such as `find()`, `iterate()`, `count()`, `remove()` and `update()`. We need to specify the JSON query as a string in R.
+
+```{r}
+crimes$count('{}')
+```
+
+As you can see from part 1, the function `find()` allows us to extract all documents from the collection. However, when working with a large data set, the option (argument) `limit` come in handy (similar to the `LIMIT` clause in the SQL)
+
+```{r}
+crimes$find('{}', limit = 3)
+```
+
+How many distinct "Primary Type" do we have?
+
+```{r}
+crime_types <- crimes$distinct("Primary Type")
+length(crime_types)
+crime_types
+```
+
+### Conditions in queries
+
+#### Specify Quality Condition
+
+To specify equality conditions, use `<field>:<value> `. For example:
+
+```{r}
+crimes.count('{"Primary Type" : "BATTERY"}')
+```
+
+This operation corresponds to the following SQL statement:
+
+```
+SELECT COUNT(*) FROM crimes WHERE Primary Type = "BATTERY";
+```
+
+#### Specify Conditions Using Query Operators
+
+A query filter document can use the query operators to specify conditions in the following form:
+
+```
+<field>: { <operator>: <value> }
+```
+
+Example:
+
+```{r}
+crimes$count('{"Primary Type" : {"$in": ["BATTERY", "THEFT"]}}')
+```
+
+Options for operators: `$lt`, `$lte`, `$gt`, `$gte`, `$ne`, and `$in`.
+
+#### Specify `AND` Conditions
+
+A compound query can specify conditions for more than one field in the collection’s documents. Implicitly, a logical `AND` conjunction connects the clauses of a compound query so that the query selects the documents in the collection that match all the conditions.
+
+Now, let’s see how many domestic assualts there are in the collection.
+
+```{r}
+crimes$count('{"Primary Type" : "ASSAULT", "Domestic" : "true"}')
+```
+
+The above query corresponds to the following SQL statement;
+
+```
+SELECT COUNT(*) FROM crimes WHERE PRIMARY TYPE = "ASSAULT" AND Domestic = "true"
+```
+#### Specify `OR` Conditions
+
+Using the `$or` operator, you can specify a compound query that joins each clause with a logical`OR` conjunction so that the query selects the documents in the collection that match at least one condition.
+
+Example: we want to count number of thefts or any crime incidents occurred in the central district (tourism destination)
+
+```{r}
+crimes$count('{"$or" : [{"PRIMARY TYPE" : "THEFT"}, {"District" : 1}]}')
+```
+
+### Project Field to Return from Query
+
+By default, queries in MongoDB return all fields in matching documents. To limit the amount of data, you can specify or restrict fields to return by argument `fields = ...`.
+
+```{r}
+crimes$find('{"Primary Type" : "THEFT"}', 
+            fields = '{"Date" : true, "Description" : true, "_id": false}',
+            limit = 5)
+```
+
+**Question 3:** Most of visitors to Chicago in *the Loop* (district 1 and 18). In this year, there is a concern about the increase of robbery incidents (see [the story](http://www.chicagotribune.com/news/local/breaking/ct-met-chicago-violence-downtown-robberies-spike-20180328-story.html)). Could you find out the number of incidents occurring in 2017 and 2018 to verify the story?

@@ -1,0 +1,231 @@
+---
+title: "STAT 474 &ndash; Techniques for Large Data Sets"
+subtitle: "Fall 2018"
+date: "October 15, 2018"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(eval=FALSE)
+```
+
+# SparklyR - Brief review
+
+
+What is Spark?
+
+- A new, faster, and more advanced engine for Big Data Analytics
+
+- An attractive alternative to Hadoop due to its faster performance
+  
+- Spark is a cluster computing system and not a data storage system.
+
+--
+
+What is SparklyR?
+
+- A brand new package from RStudio to interact with Spark
+
+- *Under the hood:* SparklyR uses `dplyr` to interact with R users and Spark SQL to interact with Spark.
+
+- SparklyR provides the access to Spark ML library to perform statistical and machine learning modeling on large data.
+
+---
+# In-class Activities
+
+- Let's open RStudio and connect with your local Spark installed on Friday's lab.
+
+- Let's take a look at the Web UI of Spark
+
+- Tuning Spark requires expertise. Two basic parameters regarding the memory usage:
+
+```{r}
+conf <- spark_config()
+conf$`sparklyr.shell.driver-memory` <- "512M"  #<<
+conf$spark.memory.fraction <- 0.8 #<<
+```
+
+---
+# Working with large data sets
+
+- American Statistical Association held a challenges in 2009 about [Airline on-time performance](http://stat-computing.org/dataexpo/2009/)
+
+- Available data: All domestic flights from 1987-2008. We will only work with 2007-2008 data sets.
+
+```{r}
+if(!file.exists("2008.csv.bz2"))
+  {download.file("http://stat-computing.org/dataexpo/2009/2008.csv.bz2", "2008.csv.bz2")}
+if(!file.exists("2007.csv.bz2"))
+  {download.file("http://stat-computing.org/dataexpo/2009/2007.csv.bz2", "2007.csv.bz2")}
+```
+
+---
+# Read CSV files into Spark
+
+```{r}
+spark_read_csv(sc, "flights_spark_2008", "2008.csv.bz2", memory = FALSE)
+```
+
+--
+
+- The `memory` argument controls if the data will be loaded into memory or kept on disk.
+
+- Keeping data in memory makes computation much faster.
+
+- **To Do:** take a look at Spark Web UI tabs. Any comment?
+---
+# Handler of Spark data sets
+
+- The function `tbl()` provides access to data sets in Spark
+
+```{r}
+sp_flights <- tbl(sc, "flight_spark_2008")
+```
+
+- Handler can be thought as the SQL script to query data from Spark
+
+```{r}
+object.size(sp_flights)
+sp_flights %>% show_query()
+```
+
+---
+# Spark SQL
+
+- Spark SQL can be accessed using SQL query thanks to the `DBI` package
+
+```{r}
+dbGetQuery(sc, "SELECT * FROM flights_spark_2008 LIMIT 10");
+```
+
+- Equivalently,
+
+```{r}
+sp_flights %>% head(10)
+```
+
+- **To Do:** Extract the first 5 flights from Atlanta (`Origin == "ATL"`). What are those destinations?
+
+---
+# dplyr in SparklyR
+
+- SparklyR converts `dplyr`-style query into SQL query before passing to Spark.
+
+- Example:
+
+```{r}
+flights_table <- sp_flights %>%
+    mutate(DepDelay = as.numeric(DepDelay),
+         ArrDelay = as.numeric(ArrDelay),
+         DepDelay > 15 , DepDelay < 240,
+         ArrDelay > -60 , ArrDelay < 360, 
+         Gain = DepDelay - ArrDelay) %>%
+  filter(ArrDelay > 0) %>%
+  select(Origin, Dest, UniqueCarrier, Distance, DepDelay, ArrDelay, Gain)
+  
+  flights_table %>% show_query()
+```
+
+- **Question:** What does the query do?
+
+---
+# Understand Caching
+
+- When calling `flights_table`, Spark executes the query and return the results to the screen without saving it.
+
+- `sdf_register()` will register the resulting in Spark (will see when calling `src_tbls()`)
+
+- To drop a table, use `db_drop_table()`
+
+--
+
+- The `tbl_cache()` command loads the results into an Spark RDD in memory, so any analysis from there on will not need to re-read and re-transform the original file.
+
+---
+# Activity
+
+- Compare the performance between cache versus uncache data: compute the number of rows in the `flights_table`
+
+```{r}
+flights_table %>% tally()
+```
+
+- Using the following code to measure the running time:
+
+```{r}
+start_time <- Sys.time()
+<Thing must be done in R>
+end_time <- Sys.time()
+
+end_time - start_time
+```
+
+---
+# Activity
+
+- Run:
+
+```{r}
+spark_read_csv(sc, "flights_spark_2007" , "2007.csv.bz2", memory = FALSE)
+all_flights <- tbl(sc, "flights_spark_2008") %>%
+  union(tbl(sc, "flights_spark_2007")) %>%
+  group_by(Year, Month) %>%
+  tally()
+```
+
+- **Question:** Are there more flights in 2008 than in 2007?
+
+---
+# Modeling in Sparkly R
+
+- See demo.
+
+- Cheat sheets about `sparklyr` and more can be downloaded at [RStudio Cheat Sheets](https://www.rstudio.com/resources/cheatsheets/)
+
+---
+class: middle, center
+
+# Web Technologies
+## Getting Data from the Web
+
+---
+# Web Scrapping
+
+- Data and information on the web is growing exponentially.
+
+- Web scraping is a technique for converting the data present in unstructured format (HTML tags) over the web to the structured format which can easily be accessed and used.
+
+- Ways to scrap data:
+
+  1. Human Copy-Paste
+  
+  2. Text pattern matching
+  
+  3. API Interface
+  
+  4. DOM Parsing
+---
+# Simple Web Scrapping with R - rvest package
+
+- Loads tables from web pages
+
+  - Looks for `<table></table>`
+  
+  - Table needs to be **well formatted**
+  
+  - Returns a *list* of *DataFrames*
+  
+- Can load *directly from URL*
+
+  - Careful! Data changes. Save a copy with your analysis
+  
+- You will often need to do additional transformations to perpare the data.
+
+ 

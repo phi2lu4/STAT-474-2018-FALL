@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-09-21" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### September 21, 2018
+
+---
+
+
+
+
+# Characteristics of NoSQL
+
+--
+
+- non-relational
+
+- open-source
+
+- cluster-friendly
+
+- 21-st century web
+
+- schema-less
+
+--
+
+&lt;img src="images/nosql.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+---
+![](images/nosql-groups.png)
+---
+# Key-value data model
+
+&lt;img src="images/key-value-1.jpg" width="50%" style="display: block; margin: auto;" /&gt;
+
+--
+
+&lt;img src="images/key-value-2.jpg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+
+---
+# Document data model
+
+
+![](images/document-1.jpg)
+
+---
+![](images/column-family.png)
+---
+# Aggregate-oriented Data Model
+
+- Inspired by Domain-driven design, aggregare is a collection of related objects that we wish to treat as a unit.
+
+.pull-left[
+![](images/aggregate.png)
+
+*Aggregate database*
+]
+
+--
+
+.pull-right[
+![](images/mismatch.jpg)
+
+*RDBMS*
+]
+---
+# Why these databases are useful?
+
+- Aggregates make it easier for the database to manage data storage over clusters.
+
+  - Spread aggregates across multiple nodes (machines) and can be retrieve simultaneously.
+
+--
+
+- Aggregate-oriented databases work best when most data interaction is done with the same
+aggregate
+
+--
+
+- *Drawback:*
+
+  - Changing the aggregate structure is hard, complicate and time-comsuming.
+  
+  - Not useful when interactions use data organized in many different formations.
+  
+---
+
+![](images/graph-intro.png)
+---
+# Graph databases
+
+Graph databases organize data into node and edge graphs; they work best for data that has
+complex relationship structures.
+
+&lt;img src="images/graphDB-example-1.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+---
+![](images/graphDB-example-2.png)
+
+---
+# Distribution Models
+
+- Most attractive feature of NoSQL is its ability to run databases on a large cluster
+
+  - Easy to scale out
+  
+--
+
+- Great distribution model allows us to handle larger quantities of data, to be efficient ETLs, to have more availability when the network slowdowns or breakages.
+
+--
+
+- Two different types of distribution models:
+
+  1. **Replication:** Copy the same data over multiple nodes (machines)
+  
+  2. **Sharding:** Puts different data on different nodes
+  
+--
+
+- A system may use either or both techniques.
+
+---
+# NoSQL and Consistency
+
+- In RDBMS, we have **ACID**. In NoSQL, there is a similar concept called **BASE**
+
+--
+
+- Example of consistency:
+
+&lt;img src="images/read-consistency.jpg" width="50%" style="display: block; margin: auto;" /&gt;
+
+--
+
+- In NoSQL, graph databases are also ACID-compliant
+---
+![](images/three-tier-architecture.png)
+---
+![](images/consistency-1.png)
+---
+![](images/consistency-2.png)
+---
+![](images/consistency-3.png)
+---
+![](images/consistency-4.png)
+---
+![](images/consistency-5.png)
+---
+![](images/consistency-6.png)
+---
+![](images/consistency-7.png)
+---
+![](images/consistency-8.png)
+---
+![](images/consistency-9.png)
+---
+![](images/consistency-10.png)
+---
+![](images/consistency-11.png)
+---
+# Consistency
+
+- There are two types of consistency: **logical** and **replication**
+
+--
+
+- Replication consistency rises when we have data spread across a cluster of nodes (machines)
+
+--
+
+- Example: Martin and Pramod try to book a room on New Year Eve in NYC. Hypothetically, there is only one room available in Time Square area.
+
+  - What happens when Martin and Pramod request the room simultaneously?
+  
+--
+
+  - Assume that Martin and Pramod live in two different continents. They interact with two different replications, whose connection is not available.
+  
+---
+![](images/availability-1.png)
+---
+![](images/availability-2.png)
+---
+![](images/availability-3.png)
+---
+![](images/availability-4.png)
+
+---
+# The CAP Theorem
+
+- Known as: "Among **Partition Tolerance**, **Availability**, and **Consistency**, pick any two".
+
+--
+
+- Also rephrased as: When the system live on partitioned network, it can be either **consistent** or **available**
+
+--
+
+- In reality, consistency vs. availability is not a binary choice, but a wide spectrum of trade-offs.
+
+---
+# SQL vs NoSQL
+
+- No right or wrong choice between SQL and NoSQL
+
+- Database Integration is a bad choice, as it reduces the flexibility.
+
+- Use different technologies for different purposes.
+
+- Service encapsulation supports changing data storage technologies as needs and technology
+evolve.
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

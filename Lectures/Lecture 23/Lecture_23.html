@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-10-24" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### October 24, 2018
+
+---
+
+
+
+
+# Working with text
+
+- Why?
+
+--
+
+.pull-left[
+![](images/google-search.jpg)
+]
+
+.pull-right[
+![](images/twitter.jpg)
+]
+
+--
+
+.center[
+## There is a world of data in text
+]
+
+---
+# Working with Text
+
+- It is hard
+
+&gt; "There is no worse way to screw up data than to let a single human type it
+in, without validation.
+
+&gt; I once acquired the complete dog licensing database for Cook County,
+Illinois...
+
+&gt; ...this database contained at least 250 spellings of Chihuahua."
+
+&gt; &amp;ndash; Quartz guide to bad data
+
+--
+
+- It is easy
+
+  - "20% of the tools work for 80% of text."
+  
+---
+# Text in R
+
+- All texts are in `string` format.
+
+- Special characters can be included with the backslash. 
+
+
+```r
+x &lt;- c("\"", "\\", "\'")
+x
+```
+
+
+- Base R has many helper functions for string manipulation; however, it is not consistent.
+
+  - `stringr` package (part of tidyverse)
+  
+  - All functions start with `str_`
+  
+  - *Question:* Which functions have we covered last Monday?
+  
+---
+# Matching patterns with regular expressions
+
+- Regular expression (Regexp) allows to describe patterns in strings.
+
+  - Hard to learn but extremely useful.
+  
+  - `stringr` has the function `str_view()` and `str_view_all()` to show you how strings and patterns match.
+  
+--
+
+
+```r
+x &lt;- c("apple", "banana", "pear")
+str_view(x, "an")
+```
+
+--
+
+
+```r
+str_view(x, ".a.")
+```
+
+*Question:* What does the dot mean?
+
+---
+# Basic matches
+
+- The dot (.) matches any character (except a newline)
+
+- If you wish to match the character "." (dot), use an "escape" (i.e., the backslash)
+
+
+```r
+dot &lt;- "\\."
+cat(dot)
+str_view(c("abc", "a.c", "bef"), "a\\.c")
+```
+
+- The regular expression as `\.` and the string that represent the regular expression as `"\\."`
+
+- *Question:* Come up with the regexp string to match a literal ` \ `
+
+--
+
+- *Question:* What patterns will the regular expression `\..\..\..` match? How would you represent it as a string?
+
+---
+# Anchors
+
+- By default, regular expression will match any part of a string.
+
+- Use `^` to match the start of the string
+
+- Use `$` to match the end of the string
+
+
+```r
+x &lt;- c("apple", "banana", "pear")
+str_view(x, "^a")
+str_view(x, "a$")
+```
+
+--
+
+
+```r
+x &lt;- c("apple pie", "apple", "apple cake")
+```
+
+*Question:* How to force a regular expression to only match a complete string?
+
+---
+# Character classes and alternatives
+
+- `\d` matches any digit
+
+- `\s` matches any whitespace (e.g., space, tab, newline)
+
+- `[abc]` matches a, b, x
+
+- `[^abc]`matches anything except a, b, c
+
+--
+
+
+```r
+x &lt;- c("abc", "a.c", "a*c", "a c")
+str_view(x, "a[.]c")
+str_view(x, ".[*]c")
+str_view(x, "a[ ]")
+```
+
+- Alternative to backslash escapes when including a single special character.
+
+---
+# Character classes and alternatives
+
+- Use *alternation* to pick between one or more alternative patterns
+
+  - Example: `abc|d..f` will match either "abc" or "deaf"
+  
+- But `abc|xyz` won't match `abcxy` or `abxyz`
+
+- Use parentheses to make it easy to understand
+
+
+```r
+str_view(c("grey", "gray"), "gr(e|a)y")
+```
+
+--
+
+**Question:** Create regular expression to find all words that
+
+  1. Start with a vowel
+  
+  2. End with `ed`, but not with `eed`.
+  
+  3. End with `ing` or `ise`.
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

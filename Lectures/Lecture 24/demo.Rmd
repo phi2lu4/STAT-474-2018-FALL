@@ -1,0 +1,66 @@
+---
+title: "Demo on string manipulation"
+output: html_notebook
+---
+
+It is quite often that we need to clean up information scraped from the web, especially with text. In this demo, we look at the list of "Unicorns" (startups whose valuations are greater than $1B), which you can simply copy and paste from this [CB Insights's Page](https://www.cbinsights.com/research-unicorn-companies).
+
+Let's get started by loading the necessary libraries
+
+```{r}
+library(tidyverse)
+library(rvest)
+```
+
+The table from the web page is extracted and stored in R:
+
+```{r}
+page <- read_html("https://www.cbinsights.com/research-unicorn-companies")
+tables <- html_table(page, fill = TRUE)
+```
+
+We can view a extracted table as
+
+```{r}
+head(tables[[1]])
+```
+
+To get rid of all of the empty rows, we run
+
+```{r}
+data <- tables[[1]] %>% na.omit()
+```
+
+Now, we start cleaning up the data. Looking at `Select Investors` column we can see some escaping letters like `"\n"` (new line), `"\t"` (tab) in the data.
+
+```{r}
+data <- mutate(data, `Select Investors` = str_squish(`Select Investors`))
+head(data)
+```
+
+We can see 5 startups including 'Uber' listed in the table. Among investors in Uber is Lowercase Capital. To see all unicorns Lowercase Capital is currently investing in, we can simply query
+
+```{r}
+filter(data, str_detect(`Select Investors`, "Lowercase"))
+```
+
+Let's say we want to count how many Unicorn companies each investor has invested in. If we can break apart the list of the investors and bring each investor into its own row it will be much easier to count them. 
+
+```{r}
+data <- mutate(data, `Select Investors` = str_split(`Select Investors`, ", "))
+head(data)
+```
+
+This will create a 'list' data type column which contains a list of the values. Now, we can bring each value in the list to its own row by using 'unnest' function.
+
+```{r}
+data <- unnest(data, `Select Investors`)
+head(data)
+```
+
+Now, it's much easier to compare among the investors in terms of how many Unicorns they have invested in.
+
+```{r}
+data %>% group_by(`Select Investors`) %>% tally() %>% arrange(desc(n))
+```
+

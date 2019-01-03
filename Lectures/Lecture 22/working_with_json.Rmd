@@ -1,0 +1,78 @@
+---
+title: "Working with JSON in R"
+output: html_notebook
+---
+
+A few R packages such as `jsonlite`, `rjson`, `RJSONIO`, provide basic JSON functionality for R users and other packages (e.g., `mongolite`). We will use the package `jsonlite` for the demo (it is also part of the `tidyverse`)
+
+```{r}
+# The package is needed to be installed once. Uncomment if this is your first use.
+# install.packages("jsonlite")
+library(tidyverse)
+library(jsonlite)
+```
+
+
+The first example is based on the simple JSON data
+
+```{r}
+data <- '[
+{
+    "Prof": "Gonzalez",
+    "Classes": [
+      "CS186", 
+      { "Name": "Data100", "Year": [2017,2018] }
+    ],
+    "Tenured": false
+  },
+  {
+    "Prof": "Nolan",
+    "Classes": [
+      "Stat133", "Stat153", "Stat198", "Data100"
+    ],
+    "Tenured": true
+  }
+]'
+data
+```
+
+*Note:* The `\n` in the string `data` is a newline character, which is used to signify the end of a line of the text and the start of the new one.
+
+To display a string without its control characters (e.g., newline characters), we can use the function `cat()` (similar to `cat` command we encountered when working with Hadoop filesystem)
+
+```{r}
+cat(data)
+```
+
+
+To read an JSON object, we use `fromJSON`:
+
+```{r}
+json_data <- fromJSON(data)
+json_data
+```
+
+**Question:** Compare the display of `json_data` to the original structure and comment on the differences.
+
+Examine the structure of the parsed JSON object:
+
+```{r}
+str(json_data)
+```
+
+The overall structure of `json_data` is a data frame, which allows use to access individual columns via indexing or `$`
+
+```{r}
+json_data$Prof
+json_data[ , -2]
+```
+
+Accessing data in `list` format is tricker and requires using the list indexing `[[ ... ]]`. For example, to read data about the `Data 100` class from Prof Gonzales
+
+```{r}
+json_data$Classes[[1]][[2]]
+json_data$Classes[[1]][[2]][["Year"]]
+```
+
+**Question:** Can we list the courses Prof. Nolan taught?
+

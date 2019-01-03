@@ -1,0 +1,118 @@
+---
+title: "Simple Web Sccrapping with R"
+output: html_notebook
+---
+
+In R, the package `rvest` makes it easy to scrape (or harvest) data from html web pages. The package was inspired by libraries like [beautiful soup](https://www.crummy.com/software/BeautifulSoup/), which was written in Python. It is designed to work with [magrittr](https://github.com/tidyverse/magrittr) so tgat you can express complex operations as elegant pipelines composed of simple, easily understood pieces. Install it with
+
+
+```{r}
+install.packages("rvest")
+library(rvest)
+```
+
+# Examining Solar Energy Usage:
+
+Suppose I am interested in looking at photovoltaic output for California. This data is aggregated on the web here: https://www.energy.ca.gov/almanac/renewables_data/solar/index.php
+
+To read the html page from the Internet:
+
+```{r}
+page <- read_html("https://www.energy.ca.gov/almanac/renewables_data/solar/index.php")
+```
+
+Then, we extract all available tables from the web page
+
+```{r}
+tables <- html_table(page)
+```
+
+This returns a list of tables.
+
+```{r}
+length(tables)
+```
+
+We can look at each table individually,
+
+```{r}
+head(tables[[1]])
+```
+
+or all of them at once
+
+```{r}
+tables
+```
+
+If we return to the website here:
+
+[http://www.energy.ca.gov/almanac/renewables_data/solar/index.php](http://www.energy.ca.gov/almanac/renewables_data/solar/index.php)
+
+we see that this reflects the content on the website.
+
+# Cleaning the data
+
+When extracting data from the web with `rvest` we are likely to need to do substantial cleaning. For example, let's look at the first table
+
+```{r}
+head(tables[[1]])
+str(tables[[1]])
+```
+
+First, we save the body of table into a different object and fix the header
+
+```{r}
+pv <- tables[[1]][-1,]
+names(pv) <- tables[[1]][1,]
+head(pv)
+```
+
+How's about the end of the table
+
+```{r}
+tail(pv)
+```
+
+Since a tidy data should have row represent an observational unit, the last row should be removed
+
+```{r}
+pv <- pv[-nrow(pv), ]
+```
+
+While it seems that we have finished cleaning up the data, it is important to check the data types of columns:
+
+```{r}
+str(pv)
+```
+
+We observe that numeric columns are all coded as `chr`, indicating a *string* type. 
+
+```{r}
+pv$`Capacity (MW)` <- as.numeric(pv$`Capacity (MW)`)
+pv$`Net MWh` <- as.numeric(pv$`Net MWh`)
+```
+
+Oopses! There is an error message when working with `Net Mwh`. Let's re-run everything, but the last step. You will see that column `Net Mwh` has numbers with comma separatord at the thousands and `as.numeric()` function can not handle that. To work around the issue, we first remove comma and then use `as.numeric()` function again
+
+```{r}
+pv$`Net MWh` <- as.numeric(gsub(",", "", pv$`Net MWh`))
+```
+
+Final check:
+
+```{r}
+head(pv)
+```
+
+Once we've done with cleaning the data set, we should save it to disk for further analysis
+
+```{r}
+write_csv(pv, "pv.csv")
+```
+
+**Tasks:** Obtain and clean up the Solar Photovoltaic data set from the website
+
+*Note:* 
+- Some of the company names and EIA Plant IDs are missing. They should be coded as `NA` in R. 
+- When dealing with text, the function `tolower()` and `toupper()` are very useful. They convert characters into their lower/upper cases.

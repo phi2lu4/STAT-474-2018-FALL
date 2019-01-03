@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-09-19" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### September 19, 2018
+
+---
+
+
+
+
+# The rise of the RDBMS - Creating Manageable Data Structures
+
+--
+
+- In the 1960s, data was stored in flat files that imposed no structure
+  
+  - Example: CSV (Common separated value) files, text files 
+    
+- Companies created their own program to analyse their data
+  
+--
+
+- RDBMS and SQL were invented in the late 1070s
+  
+- Marked the rise and dominance of relational database
+  
+---
+# What make RDBMS popular?
+
+- Persistence
+
+--
+
+- Design for all purposes 
+
+  - Data model: entity-relationship model
+  
+  - Data abstraction
+  
+  - Data Normalization
+
+--
+  
+- Integration (e.g., data mart, data warehouse)
+
+--
+    
+- SQL Transaction
+
+  - Strong consistency, concurrence, and recovery
+  
+  - ACID
+  
+--
+
+- Reporting: allow third parties to access databases and create reports based upon the stored data
+
+  - Example: R/RStudio accesses RDBMS, extract data, and create charts
+  
+---
+# Weakness of RDBMS - Web, Content Management and the Explosion of Data
+
+- The Internet happened in early 1990s and became ubiquitous in 2000s
+
+--
+
+- The world has experienced the rapid change, but RDBMSs can't handle changes
+
+  - Relational Schema: often complex, take time and efforts to build good schema
+  
+  - Data abstraction makes RDBMS very effective for the given schema
+  
+  - Single change to the schema (even adding or replacing a column) might be a *million dollar task*.
+  
+--
+
+- Web has brought a lot of unstructured data: HTML, XML, etc.
+
+  - ETLs become difficult and labor intensive.
+  
+  - On-line versus off-line database, i.e., optimization for speed vs. for storage
+  
+  - BLOBs do not help much
+  
+---
+# Weakness of RDBMS 
+
+**Scaling RDBMS is very hard.** What scale means?
+  
+- **Scale up** (vertical scaling): grow the size of the database. 
+    
+  - Example: When running out of storage space on Dropbox, you buy and add more space to your account.
+    
+  - Can't scale up once the performance and/or capacity limits of the storage controllers are reached.
+  
+--
+  
+- **Scale out** (horizontal scaling): distribute the large database on multiple machines (servers)
+    
+  - Example: Cluster of machines and storage
+    
+--
+
+  - In theory, relational data model scales just fine, it's just an _interface_
+  
+--
+	      
+	- In practice, many SQL databases not built to scale. 
+	
+	  - They must live in a single machine.
+	  
+	  - very hard to predict SQL performance
+
+---
+# Most severe weakness of RDBMS - Mismatch for Modern App Development
+
+- Most modern application are developed using object-oriented programming languages, such as Java, C++, Python, etc., which treat data structures as "objects"
+
+--
+
+&lt;img src="images/mismatch.jpg" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+---
+# The beginning of NoSQL
+
+Many people tried to address the shortcoming of RDBMSs
+
+- Developers built their own databases
+  
+  - Rails community basically rebuilt from scratch
+    
+  - MongoDB originally written by ads back-end folks
+  
+--
+    
+- Hadoop framework was proposed, at least their fundamental concepts
+
+- Google developed *BigTable*
+
+- Amazon developed *Dynamo*
+
+--
+
+- Sparked a movement of databases called **NoSQL**
+
+---
+# Definition of NoSQL
+
+- NoSQL systems are referred to as **Not Only SQL** to emphasize that they do in fact allow SQL-like query languages to be used.
+
+--
+
+- No concensus definition, but can be described by its characteristics
+
+--
+
+- Characteristics:
+
+  - non-relational
+  
+  - open-source
+  
+  - cluster-friendly
+  
+  - 21-st century web
+  
+  - schema-less
+---
+![](images/nosql.png)
+---
+![](images/nosql-groups.png)
+---
+# Key-value data model
+
+.pull-left[
+![](images/key-value-1.jpg)
+
+![](images/key-value-2.jpg)
+
+]
+
+--
+
+  - Simplest NoSQL databases
+
+  - Data model: (key, value) pairs
+
+  - Value has no required format
+
+  - Use hash table
+
+---
+# Document data model
+
+.pull-left[
+![](images/document-1.jpg)
+]
+
+.pull-right[
+![](images/document-2.jpg)
+]
+---
+# Document data model
+
+- Provides flexibility, ease to transmit through the network
+
+- Compared to the key-value, document databases provide the transparency 
+
+- Compared to the RDBMS, document databases are schema-less
+
+  - When serving a specific purpose, it carries an implicit schema.
+
+---
+![](images/key-value-vs-document.png)
+---
+# Key-value versus document
+
+- While values in key-value databases are viewed as opaque objects, they often come with metadata that describe the content of the value
+
+  - Example: metadata has a field for customer ID
+  
+- Records in document database usually have keys, which seems to be like the key in key-value databases.
+
+- The line between key-value and document databases is quite blur.
+
+--
+
+- Common theme: aggregate-oriented databases (coined by Martin Fowler)
+
+- Idea: domain-driven design (book written by Eric Evans)
+
+--
+
+- Example: In the database for online store, order is a aggregate with multiple line items.
+
+---
+![](images/column-family.png)
+---
+# Why are these databases useful?
+
+
+&lt;img src="images/aggregate.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+- Spread aggregates across multiple nodes (machines) and can be retrieve simultaneously.
+
+--
+
+- Changing the aggregate structure is hard, complicate and time-comsuming.
+
+---
+![](images/graph-intro.png)
+---
+# Graph databases
+
+![](images/graphDB-example-1.png)
+
+---
+![](images/graphDB-example-2.png)
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

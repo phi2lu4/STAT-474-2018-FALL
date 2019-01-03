@@ -1,0 +1,137 @@
+---
+title: "Lab 1 - Basic SQL"
+output: html_notebook
+---
+
+# Part 1: Schemas & table creation
+
+Before we actually get into basic SQL queries (asking questions of data in tables), we'll look at some of the basics about how to create tables.
+
+*NOTE:* Make sure to have a copy of the database file, `dataset_1.db`, from the last lecture downloaded and in this directory for the below to work!
+
+We start with loading those packages into the current session:
+```{r, message=FALSE}
+library(DBI)
+library(RSQLite)
+```
+
+Next, we will load an SQLite database stored as a file as follows:
+
+```{r}
+con <- dbConnect(SQLite(), dbname="dataset_1.db")
+```
+
+
+Recall that the database we just loaded has one table, `precipitation_full`, having the following schema:
+
+- state_code
+- station_id
+- year
+- month
+- day
+- hour
+- precipitation
+- flag_1
+- flag_2
+
+Each tuple in this table describes one hour of rainfall (`precipitation-` in hundredths of an inch) at one station (`station_id`) in one state (`state_code`). Note that tuples with `hour=25` record the total rainfall for that day, and that we can ignore the values of attributes `flag_1` and `flag_2` for now.
+
+Now, however, let's see how to view the schema of existing tables on your own; there are several ways, including but not limited to:
+
+- DESCRIBE tablename
+- SHOW CREATE TABLE tablename
+- SHOW COLUMNS tablename
+
+Unfortunately, support for these varies widely between DBMSs, and is also limited by our RStudio interface (for example RSQLite, which we are using, does not support the above)
+
+One that does work for us here through is:
+
+```{r}
+dbGetQuery(con,'
+PRAGMA table_info(precipitation_full);
+           ')
+```
+
+Without going into full detail (yet), the above table contains one record for each hour at each station, and contains the amount of precipitation that was measured during that hour.
+
+Suppose that STAT 474 has been repurposed as a rain measurement corps to assist with the department that collected this data! Based on what we've covered so far, the above example, and the internet, create a table for storing the staff assignments. Table requirements:
+
+- Everyone in the class will be holding a cup in the rain for a specific several-hour shift at a specific station; this assignment will remain the same every day
+- Each person will have one off-day per week
+- Each person's cup might be of a different size, measured as a float value
+- The Dept. of Interior data servers can't handle the full dataset we would generate, and require a random subsample- so some people will be randomly chosen to stand in the rain without a cup. These assignments need to be recorded somehow in the table too.
+- Some people in the class have [Welsh names](https://www.youtube.com/watch?v=fHxO0UdpoxM)
+
+
+**Question 1:**
+Type your create table statement here:
+
+```{r}
+dbGetQuery(con,'
+
+')
+```
+
+# Part 2 - Single table queries
+
+Run the following code to create the `Product` table in the database
+
+```{r, message=FALSE, warning=FALSE}
+sql_queries="DROP TABLE IF EXISTS product; 
+CREATE TABLE product(       
+       pname        VARCHAR PRIMARY KEY, -- name of the product
+       price        MONEY,               -- price of the product
+       category     VARCHAR,             -- category
+       manufacturer VARCHAR NOT NULL     -- manufacturer
+); 
+INSERT INTO product values('Gizmo', 19.99, 'Gadgets', 'GizmoWorks'); 
+INSERT INTO product values('PowerGizmo', 29.99, 'Gadgets', 'GizmoWorks'); 
+INSERT INTO product values('MultiTouch', 203.99, 'Household', 'Hitachi'); 
+INSERT INTO product values('SingleTouch', 149.99, 'Photography', 'Canon');
+"
+queries <- unlist(strsplit(sql_queries, ";"))
+for (q in queries) dbSendQuery(con, q)
+```
+
+**Question 2:** Try writing a query to get an output table of all the products with "Touch" in the name, showing just their name and price, and sorted alphabetically by manufacturer.
+
+Let's look at the products first:
+```{r}
+dbGetQuery(con,'SELECT * FROM product;')
+```
+
+Write your query here:
+
+```{r}
+dbGetQuery(con,'
+
+')
+```
+
+Next, write a query that returns the distinct names of manufacturers that make products with "Gizmo" in the name:
+
+```{r}
+dbGetQuery(con,'
+
+')
+```
+
+**Question 3:** Try some of these queries but first guess what they return.
+
+```{r}
+dbGetQuery(con,'
+SELECT DISTINCT category FROM product ORDER BY category;
+')
+```
+
+```{r}
+dbGetQuery(con,'
+SELECT category FROM product ORDER BY pname;
+')
+```
+
+```{r}
+dbGetQuery(con,'
+SELECT DISTINCT category FROM product ORDER BY pname;
+')
+```

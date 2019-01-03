@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-09-24" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### September 24, 2018
+
+---
+
+
+
+
+# Introduction to MongoDB
+
+- MongoDB is a NoSQL database software using JSON-like documents with schemas (loosely defined).
+
+- MongoDB is free and open-source cross-platform database.
+
+--
+
+- You can download and install on your machine. Instruction at [https://docs.mongodb.com/manual/installation/](https://docs.mongodb.com/manual/installation/)
+
+- Several R packages have been created to interact with MongoDB. A fast and simple one that we will use is `mongolite`.
+
+- *Note:* R does not support document type; hence, all extracted data will be converted to either `data frame` or `list`.
+
+---
+# Documents in MongoDB
+
+- Documents are stored in format based on [JSON specification](http://www.json.org/)
+
+![](images/object.gif)
+
+--
+
+![](images/array.gif)
+
+--
+
+![](images/value.gif)
+
+---
+# JSON-like document in MongoDB
+
+![](images/json_mongodb.png)
+---
+# JSON-like document in MongoDB
+
+- Documents are not just key-value pairs, but can include arrays and subdocuments.
+
+- Support many other data types: geospatial, decimal, Data, etc.
+
+- While JSON-type is text-based, MongoDB also support binary-encoded JSON format, **BSON**
+
+---
+# MongoDB
+
+- MongoDB is made up of `databases` which contain `collections`. 
+
+- A `collection` is made up of `documents`. 
+
+- Each `document` is made up of `fields`. 
+
+- Collections can be indexed, which improves lookup and sorting performance. 
+
+--
+
+| Relational Concept | MongoDB Equivalent | 
+|--------------------|--------------------|
+| Database | Database |
+| Table | Collections |
+| Rows (Tuples) | Documents | 
+| Index | Index |
+
+---
+class: center, middle
+
+# Example on the MongoDB console
+
+---
+class: cneter. middle
+
+# Lab 4 - Intro to MongoDB with R
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

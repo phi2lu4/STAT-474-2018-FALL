@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>STAT 474 – Techniques for Large Data Sets</title>
+    <meta charset="utf-8">
+    <meta name="date" content="2018-09-26" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# STAT 474 – Techniques for Large Data Sets
+## Fall 2018
+### September 26, 2018
+
+---
+
+
+
+
+# Introduction to MongoDB - Review
+
+- What is MongoDB? How can we discribe the MongoDB?
+
+--
+
+- We have been working with several MongoDB functions: `insert()`, `find()`, `count()`, `distinct()` and `iterate()`. Can you discribe the functionality of each function?
+
+--
+
+- MongoDB query syntax - following JSON structure: 
+
+  - `&lt;field&gt;:&lt;value&gt; `
+  
+  - `&lt;field&gt;: { &lt;operator&gt;: &lt;value&gt; }`
+
+  - Write a query to find all the robberies or theft incidents in 2018 from Chicago's crime data, assuming that the handler for the collection is `crimes`.
+  
+---
+# Basic CRUD Operations in MongoDB
+
+- **CRUD** stands for *creating*, *reading*, *updating* and *deleting*.
+
+- We have worked with *creating* via `insert()` function.
+
+  - Accepts data frame or JSON strings (one string for each document)
+  
+  - Atomicity: single document insertion is atomic, while multiple-document insertion is not.
+  
+
+```r
+example &lt;- mongo(collection = "&lt;YOUR OWN COLLECTION NAME&gt;", 
+        url = "mongodb://&lt;USERNAME&gt;:&lt;PASSWORD&gt;@&lt;IP ADDRESS&gt;/test")
+
+queries &lt;- c('{"name" : "Peter", "age" : 99, "loves": ["apple"]}',
+      '{"name" : "Ruth", "age" : 93, "loves": ["apple", "sugar"]}',
+      '{"name" : "Jack", "loves" : ["bananas"]}');
+example$insert(queries)
+example$find()
+```
+
+---
+# Basic CRUD Operations in MongoDB
+
+- We have worked with *reading* via `find()` function.
+
+  - `fields=` option allows selection of listed fields
+  
+  - `sort=` option alows sorting
+  
+  - *Activity:* What happen when you change the number 1? Try other numbers, including -1. Comment and take note to yourself about the sorting feature.
+  
+
+```r
+example$find('{}', sort = '{"age" : 1}')
+```
+
+  
+---
+# Basic CRUD Operations in MongoDB
+
+- *Deleting* operation is straightforward
+
+  - To delete the whole collection, use `drop()` as in `crimes$drop()`. In practice, there is very few time when we want to delete a collection.
+  
+  - More often, we need to remove one/many documents: use `remove(query = '{}')`.
+  
+---
+# Updating in MongoDB
+
+- The function `update()` takes two arguments: the selector (i.e. WHERE in SQL) to use and what updates to apply to fields.
+
+
+```r
+example$update('{"name" : "Peter"}', '{"$set" : {"age" : 90}}')
+```
+
+- *Activity:* Verify the effect of updating command. What happens if you forget the `$set` operator?
+
+---
+# Adding value to an array
+
+
+```r
+example$update('{"name" : "Peter"}', 
+               '{"$push" : {"loves" :  "candy"}}')
+```
+
+- *Activity:* What happens if we mistakenly use `$set` instead? 
+---
+# Upserts
+
+- An upsert updates the document if found or inserts it if not.
+
+
+```r
+example$update('{"name": "Bob"}','{"$inc":{"age" : 1}}', upsert = T)
+```
+
+- *Activity:* What do you observe when running the above query? Comment on the effect of `$inc`?
+
+---
+# Updating in MongoDB
+
+- I'd like to add a field `vacinated` (boolean type) with the value of `TRUE` for all documents. What do you observe when running the below query?
+
+
+```r
+example$update('{}', '{"$set" : {"vacinated" : true}}')
+```
+
+--
+
+- Use the option `multiple = TRUE` for multiple updates. 
+
+- *Activity:* Try the `multiple = TRUE` option with above query and verify the expected result.
+
+---
+# Aggregation Framework in MongoDB
+
+- An advance query language to transform and combine data from multiple documents. 
+
+- The MongoDB's eqivalence to the SQL's `GROUP BY` clause.
+
+--
+
+- A call to the aggregation framework defines a pipeline, the **aggregation pipeline**, where the output from each step in the pipeline provides input to the next step.
+
+![](images/pipeline.png)
+
+---
+# Aggregation pipeline operations
+
+| SQL command | Aggregation operator | Meaning |
+|-------------|----------------------|---------|
+| SELECT | `$project` | Specify fields in the output document |
+|  | `$group` functions | Ex: `$sum`, `$min`, `$avg`, etc.
+| FROM |  | Specify in `collectionName$aggregate(...)` |
+| JOIN |  | There is no join in MongoDB | 
+|  | `$unwind` | Expand an array, one document for each array entry |
+| WHERE | `$match` | Select documents to be processed |
+| GROUP BY | `$group` | Group documents by a specified key |
+| HAVING | `$match` | Select documents to be processed |
+| ORDER BY | `$sort` | Sort documents |
+| LIMIT | `$limit` | Limit the number of output documents |
+|   | `$out` | Write the results to a collection |
+
+---
+# An example
+
+
+```r
+collection$aggregate('[ {$match: ...}, {$group: ...}, {$sort: ...} ]')
+```
+
+![](images/pipeline-example.png)
+
+--
+
+
+```r
+SELECT * 
+  FROM myCollection
+  WHERE ...
+  GROUP BY ...
+  ORDER BY ...
+```
+
+--
+
+- While SQL follows their standard order, MongoDB pipeline follows the order of operators given in the query.
+
+---
+# Another example
+
+- Consider a collection, named `sales`, containing sales records of stores across the world.
+
+- We'd like to compute the volume and the average revenue per country
+
+
+```r
+sales$aggregate( '[{
+         "$group" : {
+              "_id" : "$country", 
+              "totalRevenue" : {"$average" : "$revenue"},
+              "numSales" : {"$sum" : 1}
+         }
+}]')
+```
+
+- `$group` operator always has `"$id" : $&lt;field name&gt;`
+
+- Grouping with multiple fields: `{"$group" : {"_id" : {"state" : "$state", "city" : "$city"}}}`
+
+---
+# And another example
+
+- To find which item being loves the most in our current running example
+
+
+```r
+example$aggregate('[
+                  {"$unwind" : "$loves"},
+                  {"$group" : {"_id" : "$loves",
+                               "total" : {"$sum" : 1}}},
+                  {"$sort": {"total" : -1}},
+                  {"$limit" : 1}
+]')
+```
+
+- Run the above query and verify the result
+---
+# Activity - Chicago crimes data
+
+**Question:** Where fo most crimes take place?
+
+
+```r
+crimes &lt;- mongo(collection = "crimes", db = "Chicago",
+    url = "mongodb://&lt;USERNAME&gt;:&lt;PASSWORD&gt;@&lt;IP ADDRESS&gt;/test"))
+```
+
+&lt;br&gt;
+
+.center[ **Give me the list of top 10 places and their total counts**]
+
+---
+# Distribution Models - Distributed File Systems
+
+- How do we **store** and **access** *very large files* across **cheap** commodity devices ?
+
+--
+
+- There are two distribution models: **Sharding** and **Replication**
+
+  1. *Sharding:* split the file into smaller parts and distribute them across machines
+  2. *Replication:* put copies of the original data across machines.
+  
+&lt;img src="images/HDFS-1.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+# Distributed File System
+
+![](images/HDFS-2.png)
+---
+# Distributed File System
+
+![](images/HDFS-3.png)
+---
+# Distributed File System
+
+![](images/HDFS-4.png)
+---
+# Distributed File System
+
+![](images/HDFS-5.png)
+---
+# Distributed File System
+
+![](images/HDFS-6.png)
+---
+# Fault Tolerant Distributed File Systems 
+# Failure Event Occurs
+
+&lt;img src="images/HDFS-7.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+# Fault Tolerant Distributed File Systems 
+# Failure Event Occurs
+
+&lt;img src="images/HDFS-8.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+# Map-Reduce Distributed Aggregation
+
+- MongoDB system allows both distribution models. 
+
+- The MongoDB's aggregate framework offers limited functionalities.
+
+- How to do computing when data files (i.e., databases) distributed across multiple machines?
+
+--
+
+- Analogue: How would you **compute the number of occurrences** of each word in all the books **using a team of people?**
+
+---
+# Simple solution
+
+![](images/mapreduce-1.png)
+
+---
+# Simple solution
+
+&lt;img src="images/mapreduce-2.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+---
+# Simple solution
+
+![](images/mapreduce-3.png)
+
+---
+# Simple solution
+
+![](images/mapreduce-4.png)
+---
+# The Map Reduce Abstraction
+
+![](images/mapreduce-5.png)
+
+---
+# Key properties of Map and Reduce
+
+- **Deterministic MAP:** allows for re-execution on failure
+
+  - If some computation is lost we can always re-compute
+  
+  - Issue with samples?
+  
+--
+
+- **Commutative REDUCE:** allows for re-order of operations
+
+  - Reduce( A, B ) = Reduce ( B, A )
+  
+  - Example (addition): A + B = B + A
+  
+--
+
+- **Associative REDUCE:** allows for regrouping of operations
+
+  - Reduce( Reduce( A, B), C) = Reduce( A, Reduce( B, C))
+  
+  - Example (max): max(max(A, B), C) = max( A, max(B, C))
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

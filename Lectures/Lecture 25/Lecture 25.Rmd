@@ -1,0 +1,264 @@
+---
+title: "STAT 474 &ndash; Techniques for Large Data Sets"
+subtitle: "Fall 2018"
+date: "October 31, 2018"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(eval=FALSE)
+library(stringr)
+```
+
+# Working with text - Review
+
+- Working with text is an important part of cleaning up process in webscrapping 
+
+  - Remove special characters, split list of item stored in strings, etc.
+  
+--
+
+- Regular expression is a way to describe patterns in a string
+
+  - Many useful functions in `stringr` use regular expression to manipulate strings.
+
+--
+
+- Textmining with R in the next couple lectures
+
+  - The latest homework features a tiny bit of textmining in the use case 3.
+  
+---
+# Overview of Text Mining
+
+- Text data is everywhere - books, news, articles, financial analysis, blogs, social networking, etc.
+
+  - About 80% of world's data is in "unstructured text format"
+  
+--
+
+- We need methods to extract, summarise, and analyze useful information from unstructured/text data
+
+- Text mining seeks to automatically discover useful knowledge from the massive amount of data
+
+---
+# What is Text Mining?
+
+- Use of **computational techniques** to extract high quality information from text
+
+- Extract and discover knowledge hidden in text **automatically**
+
+- KDD definition: "discovery by computer of new previously unknown information, by automatically extracting information from a usually **large amount** of different **unstructured** textual resources"
+
+---
+# Need for text mining - an example
+
+- An example in bio-tech industry
+
+- 80% of biological knowledge is only in research paper (instructured data)
+
+  - If a scientist **manually** read 50 research paper/week and only 10% of those data are usefull then he/she manages only 5 research paper/week.
+
+--
+
+- Online databases like *Medline* adds more than 10,000 abstracts per month using **text mining**
+
+  - The performance of gathering relevant data is increased dramatically when we use text mining
+  
+---
+# Challenges in Text Mining
+
+- Word ambiguity
+
+  - Automobile = car = vehicle = Toyota
+  
+  - Apple (the company) or apple (fruit)
+  
+--
+  
+- Context sensitivity
+
+  - "AOL merges with Time-Warner" versus "Time Warner is brought by AOL"
+  
+  - "This camera sucks." versus "This vacuum cleaner really sucks."
+
+--
+
+- Noisy data
+
+  - Spelling mistakes
+
+---
+# Text Mining Process
+
+- **Text preprocessing**
+
+  - Cleaning up: misspelling, lower- vs. upper-cases, punctuation, etc.
+  
+  - Natural language processing: part of speech tagging, Syntactic parsing, etc.
+  
+  - Concept of *tidytext*, tokenization, normalization, etc.
+  
+--
+  
+- Features Generation
+
+  - Bag of words
+  
+--
+
+- Feature selection
+
+  - Reduce dimensionality
+  
+  - Statistical methods
+
+--
+
+- Data Mining: classification (supervised) / Clustering (unsupervised)
+
+---
+# Text preprocessing
+
+- The *tidy text* format follows the **tidy data principle**
+
+  - A table with one token per row
+  
+--
+
+- A **token** is a meaningful unit of text, such as a word that we are interested in using for analysis.
+
+- Tokenization = process of splitting text into tokens
+
+--
+
+- Non-tidy text format:
+
+  - String 
+  
+  - Corpus: collections of raw strings annotated with additional metadata and details.
+  
+  - Document-term matrix: describing a collection of documents (one row for each document, one column for each term)
+  
+---
+# Tokenization
+
+- Input: "Friends, Romans and Countrymen"
+
+- Output: Tokens
+
+  - Friends
+  
+  - Romans
+  
+  - Countrymen
+  
+- But what are valid tokens to emit?
+
+---
+# Issues in tokenization:
+
+- Example: *Finland's capital*
+
+  - *Finland* AND *s*? *Finlands*? *Finland's*?
+  
+--
+
+- Example: *Hewlett-Packard* is splitted into *Hewlett* and *Packard* as tokens
+
+  - typical solution: break up hyphenated sequence
+  
+  - Tough choice: co-education? lowercase vs lower-case vs lower case?
+  
+--
+
+- Example: *San Francisco* - one token or two?
+
+---
+# Stop words
+
+- Common words which would appear to be of little value.
+
+  – e.g. the, a, and, to, be
+  
+- With a stop list, you exclude from the dictionary entirely the commonest words. Intuition:
+
+  – They have little semantic content
+  
+  – There are a lot of them: about 30% of postings for top 30 words
+  
+- But the trend is "away" from doing this:
+
+  – Good compression techniques means the space for including stop words in a system is very small
+  
+  – Good query optimization techniques mean you pay little at query time for including stop words.
+  
+  – You need them for: 
+  
+  - Phrase queries: "King of Denmark"
+  
+  - Various song titles, etc.: "Let it be", "To be or not to be"
+  
+  - "Relational" queries: "flights to London"
+
+---
+# Normalization 
+
+- We may need to "normalize" words in the text as well as tokens (words) into the same form
+
+  – We want to match U.S.A. and USA
+  
+--
+  
+- We most commonly implicitly define equivalence classes of terms by, e.g.,
+
+  – deleting periods to form a term, e.g., U.S.A.-> USA
+
+  – deleting hyphens to form a term, e.g., anti-discriminatory -> antidiscriminatory
+  
+---
+# Case folding
+
+- Reduce all letters to lower case
+
+  - exception: upper case in the mid-sentence, e.g., General Motors, Fed vs fed
+  
+  - Often best to lower case everything
+  
+  
+- Longstanding Google example: 
+  
+  - search C.A.T 
+  
+  - top result is for "cats", but not Caterpillar Inc.
+  
+---
+# Other preprocessing techniques
+
+- **Lemmatization:** reduce inflectional/variant forms to base form
+
+  - am, are, is --> be
+  
+  - car, cars, car's, cars' --> car
+  
+--
+
+- **Stemming:** Reduce words to their "roots" before tokenizing
+
+  - automate(s), automatic, automation --> automat
+  
+--
+
+- Reduce dimensionality
+  
+---
+class: middle, center
+
+# Demo on tidy text

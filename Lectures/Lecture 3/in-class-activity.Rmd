@@ -1,0 +1,85 @@
+---
+title: "The First Glimpse of SQL Language"
+output: html_notebook
+---
+
+Several R packages have been created to help us easily interact with DBMS in R and RStudio. Among them is the DBI package (the most common database interface). DBI separates the connectivity to the DBMS into a “front-end” and a “back-end”. Applications use only the exposed front-end API. The back-end facilities that communicate with specific DBMSs (SQLite, MySQL, PostgreSQL, MonetDB, etc.) are provided by drivers (other packages). In this notebook, we will work with the SQLite database, which we need to download and install RSQLite package.
+
+```{r}
+install.packages("DBI")
+install.packages("RSQLite")
+```
+
+We start with loading those packages into the current session:
+```{r, message=FALSE}
+library(DBI)
+library(RSQLite)
+```
+
+Next, we will load an SQLite database stored as a file as follows:
+
+```{r}
+con <- dbConnect(SQLite(), dbname="dataset_1.db")
+```
+
+*Note:* You need to check you current working directory to make sure that your file `dataset_1.db` is stored at the directory. R/RStudio won't give you an error message if the database file could not be found.
+
+Lets look at one table from the US National Oceanic and Atmospheric Administration (NOAA) Rainfall dataset- precipitation_full- having the following schema:
+
+- state_code
+- station_id
+- year
+- month
+- day
+- hour
+- precipitation
+- flag_1
+- flag_2
+
+Each tuple in this table describes one hour of rainfall (`precipitation-` in hundredths of an inch) at one station (`station_id`) in one state (`state_code`). Note that tuples with `hour=25` record the total rainfall for that day, and that we can ignore the values of attributes `flag_1` and `flag_2` for now.
+
+Let's take a look at some sample rows of the table via SQL queries.
+
+```{sql, connection=con, output.var = "mydataframe"}
+SELECT * FROM precipitation_full LIMIT 5;
+```
+
+The data set extracted from the database has been stored in the object named `mydataframe`. 
+```{r}
+mydataframe
+```
+
+*Note:* Don't worry if you don't understand all the SQL queries. We will cover more in the next couple lectures.
+
+To see how many observations are available in the table:
+```{sql, connection=con, output.var=n_obs}
+SELECT COUNT(*) FROM precipitation_full;
+```
+
+If you look at the "Environment" tab in RStudio, you will see the new variable named `n_obs` containing the number of rows (tuples) in the table `precipitation_full`.
+
+```{r}
+n_obs
+```
+
+In the SQL code chunk, we can have multi-line SQL commands:
+
+```{sql, connection=con, output.var=indiana}
+SELECT SUM(p.precipitation) 
+FROM precipitation_full p, states s 
+WHERE p.state_code = s.code AND s.abbrev = 'IN';
+```
+
+**Check point:** What is the result of the above SQL commands?
+
+So far, we have seen how the SQL commands can be incorporated with R notebook, which is a very useful feature of RStudio. However, if you want to use "R-only" feature (which you can type in the console tab/window), you can use the function `dbGetQuery()` of the `DBI` package
+
+```{r}
+dbGetQuery(con, '
+  SELECT SUM(p.precipitation) 
+  FROM precipitation_full p, states s 
+  WHERE p.state_code = s.code AND s.abbrev = \'IN\';
+  ')
+```
+
+*Note:* Care should be used to escape your quotes as needed. For example, `'IN'` is written as `\'IN\'`.

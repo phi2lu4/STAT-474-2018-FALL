@@ -1,0 +1,196 @@
+---
+title: "Text clustering in R"
+output: html_notebook
+---
+
+When examining the effectiveness of clustering methods, it is very useful to try it on a simple case where we know the "right answer". For example, we could collect a set of documents that definitely relate to four separate topics, then perform clustering methods to see whether they can correctly distinguish the four groups. 
+
+Suppose a vandal has broken into your study and torn apart four of your books:
+
+- Great Expectations by Charles Dickens
+- The War of the Worlds by H.G. Wells
+- Twenty Thousand Leagues Under the Sea by Jules Verne
+- Pride and Prejudice by Jane Austen
+
+This vandal has torn the books into individual chapters, and left them in one large pile. How can we restore these disorganized chapters to their original books? This is a challenging problem since the individual chapters are **unlabeled**.
+
+We'll retrieve the text of these four books using the package `gutenburgr`
+
+```{r, message=FALSE}
+library(tidyverse)
+library(tidytext)
+library(gutenbergr)
+
+titles <- c("Twenty Thousand Leagues under the Sea", 
+            "The War of the Worlds",
+            "Pride and Prejudice", "Great Expectations")
+books <- gutenberg_works(title %in% titles) %>%
+  gutenberg_download(meta_fields = "title")
+```
+
+As pre-processing, we divide these into chapters, use `tidytext`'s `unnest_tokens()` to separate them into words, then remove `stop_words`. We're treating every chapter as a separate "document", each with a name like `Great Expectations_1` or `Pride and Prejudice_11`. 
+
+```{r}
+by_chapter <- books %>%
+  group_by(title) %>%
+  mutate(chapter = cumsum(str_detect(text, regex("^chapter ", ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  filter(chapter > 0) %>%
+  unite(document, title, chapter)
+
+# split into words
+by_chapter_word <- by_chapter %>%
+  unnest_tokens(word, text) %>%
+  mutate(word = str_extract(word, "[a-z']+")) %>%
+  filter(!is.na(word))
+
+# find document-word counts
+word_counts <- by_chapter_word %>%
+  anti_join(stop_words) %>%
+  count(document, word, sort = TRUE) %>%
+  bind_tf_idf(word, document, n)
+
+word_counts
+```
+
+Right now our data frame `word_counts` is in a tidy form, with one-term-per-document-per-row, but the `kmeans()` requires the matrix, whose rows represent documents (i.e., chapters) and columns represent words.
+
+```{r}
+chapters_mat <- word_counts %>%
+  select(document, word, tf_idf) %>%
+  spread(word, tf_idf, fill = 0)
+```
+
+We can then run `kmeans()` functions to identify the four clusters.
+
+```{r}
+km_out <- kmeans(chapters_mat, centers = 4, nstart = 20)
+```
+
+Extract the results from the k-means clustering and compare with the truth.
+
+```{r}
+chapters <- tibble(document = rownames(chapters_mat),
+                   cluster = km_out$cluster) %>%
+  separate(document, c("book", "chapter"), sep = "_")
+chapters %>% count(book, cluster)
+```
+
+About 39 chapters were clustered with chapters from "War of the Worlds", while chapters from "Pride and Prejudice" and "Twenty Thousand Leagues under the Sea" were correctedly clustered.
+
+Since the `kmeans()` only use the Euclidean metric to measure the distance between documents, it posts a limitation on its usage when working with text data. Spherical k-means method attempts to overcome this limitation by using the cosine similarity measure instead of the Euclidean distance. Precisely, the distance between the document $x$ and the center $\mu$ is defined as
+
+$$d(x, \mu) = 1 - \cos(x, \mu) = 1 - \frac{x \bullet \mu}{||x||\cdot ||\mu||}$$
+
+The spherical kmeans is implemented in the package `skmeans`
+
+```{r}
+# install.packages("skmeans")
+library(skmeans)
+skm_out <- skmeans(chapters_mat, k = 4)
+```
+
+We can look at the results with respect to the novels those chapters come from
+
+```{r}
+skm_chapters <- tibble(document = rownames(chapters_mat),
+                   cluster = skm_out$cluster) %>%
+  separate(document, c("book", "chapter"), sep = "_", convert = TRUE)
+skm_chapters %>% count(book, cluster)
+```
+
+**Checkpoint:** What if we wish to group all the chapters into 3 clusters? What is the result the spherical kmeans method provides?
+
+
+# Hierarchical Clustering in Text
+
+The dendrogram is constructed from the distance matrix, whose ij-th entry represents the distance between the i-th and the j-th observations. For text analysis, the natural distance measure between two documents is 1 minus the cosine similarity. First, we compute the similarity of all pairs of documents
+
+```{r}
+library(widyr)
+
+mat <- word_counts %>% 
+  pairwise_similarity(document, word, tf_idf, diag = TRUE) %>%
+  spread(item2, similarity) %>%
+  select(-item1)
+
+dist_mat <- 1 - as.dist(mat)
+```
+
+The hierarchical clustering can be performed by executing the following
+
+```{r}
+hc_complete <- hclust(dis_mat, method = "complete")
+hc_complete_out <- cutree(hc_complete, k = 4)
+```
+
+To check the accurarcy of the clustering method, we create a table with `documents` and cluster index
+
+```{r}
+chapters_hc_complete <- tibble(document = colnames(mat), 
+                               cluster = hc_complete_out)
+chapters_hc_complete
+```
+
+**Task:** How to check whether chapters of a novel are all clustered together?
+
+# Topic modeling
+
+The Latent Dirichlet Allocation (LDA) is implemented in the package `topicmodels`. We're getting started with installing and loading the package
+
+```{r}
+# install.packages("topicmodels")
+library(topicmodels)
+```
+
+The function `LDA()` applies LDA method on the document-term matrix object with the raw word count. Here, we create a four-topic model as there are four books; in other problems, we may need to try a few different values of $k$, the number of topics.
+
+```{r}
+chapters_dtm <- word_counts %>% cast_dtm(document, word, n)
+chapters_lda <- LDA(chapters_dtm, k = 4, control = list(seed = 1234))
+chapters_lda
+```
+
+The output of `LDA()` function does not provide any useful information. To extract the per-topic-per-word probabilities, called $\beta$ ("beta""), we do the following
+
+```{r}
+chapters_topics <- tidy(chapters_lda, matrix = "beta")
+chapters_topics
+```
+
+Notice that this has turned the model into a one-topic-per-term-per-row format. For each combination, the model computes the probability of that term being generated from that topic.
+
+To visualize the results, we look at the top 10 most common within each topic
+
+```{r}
+chapters_top_terms <- chapters_topics %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() 
+
+chapters_top_terms %>% mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta)) + geom_col() + 
+  facet_wrap( ~ topic, ncol = 2, scales = "free") + coord_flip()
+```
+
+**Checkpoint:** Comment on the most common words for each topic.
+
+Each document in this analysis represented a single chapter. Thus, we may want to know which topics are associated with each document. Can we put the chapters back together in the correct books? We can find this by examining the per-document-per-topic probabilities, $\gamma$ (“gamma”).
+
+```{r}
+chapters_gamma <- tidy(chapters_lda, matrix = "gamma")
+chapters_gamma
+```
+
+Each of these values is an estimated proportion of words from that document that are generated from that topic. For example, the model estimates that each word in the Great Expectations_57 document has only a 0.00123% probability of coming from topic 1. 
+
+Now that we have these topic probabilities, we can see how well our unsupervised learning did at distinguishing the four books. We'd expect that chapters within a book would be found to be mostly (or entirely), generated from the corresponding topic.
+
+```{r}
+chapters_gamma <- chapters_gamma %>%
+  separate(document, c("title", "chapter"), sep = "_", convert = TRUE)
+ggplot(chapters_gamma) + geom_boxplot(aes(factor(topic), gamma)) +
+  facet_wrap(~ title)
+```
+
+**Checkpoint:** Based on the graph, is there any chapter that has been misclassified?

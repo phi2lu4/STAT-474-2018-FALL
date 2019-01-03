@@ -1,0 +1,216 @@
+---
+title: "Homework 1 - BAGELS"
+output: html_notebook
+---
+
+*Author's Note:* The lab had nothing to do with how hungry the person writing this lab was.
+
+## Story:
+
+- *eBagel* is a ground-breaking new tech startup in the red-hot NoSQL-based bagel enterprise space
+- *eBagel* has just received $100M in venture capital funding. However, their sales numbers are dropping off, and you have been brought in to analyze the data and figure out what's going wrong
+
+Let's begin with loading those packages into the current session and connect with the database management system
+
+```{r, message=FALSE}
+library(DBI)
+library(RSQLite)
+con <- dbConnect(SQLite(), dbname="dataset_1.db")
+```
+
+In the database, we have the following tables:
+
+```
+Franchise(name TEXT, db_type TEXT)
+Store(franchise TEXT, location TEXT)
+Bagel(name TEXT, price MONEY, made_by TEXT)
+Purchase(bagel_name TEXT, franchise TEXT, date INT, quantity INT, purchaser_age INT)
+```
+
+where `purchase.bagel_name` references `bagel.name` and `purchase.franchise` references `bagel.made_by`.
+
+## Union
+
+First, let;s find franchises that have locations in PA **or** NYC to see who the potential competition is:
+
+```{r}
+dbGetQuery(con,'
+SELECT franchise 
+FROM store 
+WHERE location = \'NYC\'
+...
+SELECT franchise 
+FROM store 
+WHERE location = \'PA\';
+')
+```
+
+*Question 1:* Replace the `...` by the correct keyword.
+
+## Intersect: Subtle problem...
+
+eBagel's CEO is curious to know more about the back-end technologies of Bagel companies that have successfully spread across multiple locations. Let's try to use an `INTERSECT` operator to find the database types of franchises which have stores in PA **AND** NYC:
+
+```{r}
+dbGetQuery(con,'
+SELECT f.db_type
+FROM franchise f, store s 
+WHERE f.name = s.franchise AND s.location = \'NYC\'
+INTERSECT
+SELECT f.db_type
+FROM franchise f, store s 
+WHERE f.name = s.franchise AND s.location = \'PA\'
+')
+```
+
+*What happened here?*
+
+If we look at the data, we should only have gotten "MySQL" as a result:
+
+```{r}
+dbGetQuery(con,'
+SELECT f.name, s.location, f.db_type
+FROM franchise f, store s 
+WHERE f.name = s.franchise;
+')
+```
+
+*Question 2:* Explain the queries' result by breaking the query operation down. Write queries to obtain the `db_type` of stores from 'NYC' and then from 'PA' sequentially. Describe the unexpected output of the query.
+
+## Nested queries
+
+One solution to the above problem is to use *nested queries*. 
+
+*Question 3:* Write a nested query to find the common database system type `db_type`, used by stored from both 'NYC' and 'PA'
+
+```{r}
+# Your query goes here.
+dbGetQuery(con,'
+
+
+')
+```
+
+Another nested queries example: eBagel's CEO wants to know what databases support bagel companies that appeal to to the crucial twenty-something demographic:
+
+```{r}
+dbGetQuery(con,'
+SELECT f.db_type
+FROM franchise f
+WHERE f.name IN (
+    SELECT b.made_by
+    FROM bagel b, purchase p
+    WHERE b.name = p.bagel_name 
+      AND p.purchaser_age >= 20 AND p.purchaser_age < 30);
+')
+```
+
+*Question 4:* Nested queries are powerful and convenient! Could we accomplish the above without them however? 
+
+*Hint:* Beware of duplicates!
+
+```{r}
+# Your query goes here.
+dbGetQuery(con,'
+
+
+')
+```
+
+In class, we have seen the use the following over the results of nested subqueries:
+
+- `ALL`
+- `ANY`
+- `EXISTS`
+
+Unfortunately, `ALL` and `ANY` are not supported in **SQLite** (*the DBMS we're using here*). However, we can use `EXISTS` to answer a wide-range of questions. 
+
+*Question 5:* Write a query to answer the following question: does eBagel have any products which are cheaper than *any* of its competitors'? 
+
+*Note:* you can use `<>` in a condition to determine whether two quantities are different.
+
+```{r}
+# Your query goes here.
+dbGetQuery(con,'
+
+
+')
+```
+
+## Aggregation
+
+SQL (and also SQLite) supports several aggregation operations: `SUM`, `COUNT`, `AVG`, `MIN`, and `MAX`. Except `COUNT`, all aggregation operators apply to a single attribute only.
+
+Here are some simple examples:
+
+```{r}
+dbGetQuery(con,'
+SELECT AVG(price) 
+FROM bagel 
+WHERE made_by = \'eBagel\';
+')
+```
+
+Note that you can define the attribute labels of the output schema, which is convenient for aggregation operations:
+
+```{r}
+dbGetQuery(con,'
+SELECT COUNT(*) AS "Number of Stores in PA" 
+FROM store WHERE location = \'PA\';
+')
+```
+
+*Question 6:* What if we want to know how many total locations there are of relevance in the Bagel 2.0 space?
+
+```{r}
+# Your query goes here.
+dbGetQuery(con,'
+
+
+')
+```
+
+Next, you've purchased some industry sales data, and want to get a sense of how big the bagel space is exactly. How can we do this easily and efficiently, all in SQL?
+
+```{r}
+dbGetQuery(con,'
+SELECT SUM(b.price * p.quantity) AS net_sales
+FROM bagel b, purchase p
+WHERE b.name = p.bagel_name;
+')
+```
+
+*Question 7:* That's a huge market opportunity! Now, eBagel's CEO is quite excited, and wants to see more detail, such as how the distribution across companies breaks down. *Hint:* Use both grouping and aggregate.
+
+```{r}
+# Your query goes here.
+dbGetQuery(con,'
+
+
+')
+```
+
+*Question 8:* Finally, to cap off the analysis, you want to see the distribution of revenue by product. However, in order to paint a more effective high-level picture, you only want to see best-sellers, which you define as products with more that a dozen total sales.
+
+
+A massive amount of user interviewing has suggested that something called "shmear" (or schmear) is of critical importance to market success. You decide to look for competitors that have some shmear on the menu. 
+
+*Question 9:* Write a query to find such competitors.
+
+```{r}
+# Your query goes here.
+dbGetQuery(con,'
+
+
+')
+```
+
+*Question 10:* Can you find out if there were any purchases of products not on one of the company's official lists (i.e. the bagel table), using a single SQL query?
+
+```{r}
+# Your query goes here.
+dbGetQuery(con,'
+
+
+')
+```

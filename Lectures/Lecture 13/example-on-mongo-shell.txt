@@ -1,0 +1,30 @@
+## In the MongoDB shell
+
+# Check the working database
+db
+
+# Create a new collection
+db.createCollection("myCollection")
+
+# Insert new document into the collection
+db.myCollection.insert({ "name" : "Peter", "age" : 99})
+
+# Check the new insertion.
+db.myCollection.find({})
+
+# Insert new document into the collection
+db.myCollection.insert({ "name" : "Ruth", "age" : 93})
+
+# List all documents in the collection
+db.myCollection.find({})
+
+# Check Ruth's document
+db.myCollection.find({"name" : "Ruth"})
+
+# What if the document doesn't exist?
+db.myCollection.find({"name" : "Bob"})
+
+# Documents don't follow schema
+db.myCollection.insert({"this is" : "bananas", "schema" : "LOL"})
+
+db.myCollection.find({})

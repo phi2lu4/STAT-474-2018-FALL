@@ -1,0 +1,321 @@
+---
+title: "STAT 474 &ndash; Techniques for Large Data Sets"
+subtitle: "Fall 2018"
+date: "October 26, 2018"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(eval=FALSE)
+library(stringr)
+```
+
+# Regular expression - Review
+
+- Regular expression is a way to describe patterns in a string
+
+--
+
+- Confussing terminologies:
+
+  - *literal:* any character used in a search or match expression
+  
+  - *metacharacter:* one or more special characters, have a unique meaning, and not as **literal**
+  
+  - *escape sequence:* a way to indicating that we want to use one of our **metacharacters** as a **literal**.
+  
+  - *regex string:* string that contain the regular expression.
+
+---
+# Regular expression - Review
+
+- Some metacharacters we have seen: `.` (dot), `^` (caret), and `$` (dollar sign).
+
+- Brackets `[ ]` match anything inside and `[^ ]` match anything that not inside
+
+  - Can use dash for a range. Example: `[a-m0-9]` match letters from a to m and all digits.
+  
+  - To match the literal dash (`-`), leave it at the beginning or the end of the list.
+  
+- `|` is used as *alternation*. It has low precedence; usually used with the parentheses.
+
+---
+# Regular expression - Checkpoint
+
+- Given the corpus of common words in `words`, create regular expressions that find all words that are exactly three letters long. Use argument `match = TRUE` to display only matched words.
+
+--
+
+- How to empirically verify the rule "i before e except after c"?
+
+---
+# Repetition
+
+- Regex involves controlling how many times a pattern matches:
+
+  - `?`: 0 or 1
+  
+  - `+`: 1 or more
+  
+  - `*`: 0 or more
+  
+```{r}
+x <- "1888 is the longest year in Roman numerals: MDCCCLXXXVIII"
+str_view(x, "CC?")
+str_view(x, "CC+")
+str_view(x, "C[LX]+")
+```
+
+---
+# Repetition
+
+- Specify the number of matches precisely:
+
+  - `{n}`: exactly n
+
+  - `{n, }`: n or more
+
+  - `{ ,m}`: at most m
+  
+  - `{n,m}`: between n and m
+
+```{r}
+x <- "1888 is the longest year in Roman numerals: MDCCCLXXXVIII"
+str_view(x, "C{2}")
+str_view(x, "C{2,}")
+str_view(x, "C{2,3}")
+```
+
+--
+
+- By default, the result will be the longest possible match. For the shortest match, put `?` after them
+
+```{r}
+str_view(x, 'C{2,3}?')
+str_view(x, 'C[LX]+?')
+```
+
+---
+# Repetition - Practice questions
+
+- Describe in words what these regular expressions match: (read carefully to see if I'm using a regular expression or a string that defines a regular expression.)
+
+  1. `^.*$`
+  2. `"\\{.+\\}"`
+  3. `\d{4}-\d{2}-\d{2}`
+  4. `"\\\\{4}"`
+
+--
+
+- Create regular expressions to find all the (10-digit) phone numbers.
+
+- Crossword game: [https://regexcrossword.com/challenges/beginner](https://regexcrossword.com/challenges/beginner)
+
+---
+# Grouping and backreferences
+
+- Parentheses are useful to disambiguate complex expressions.
+
+- Parentheses creates a *numbered* capturing group (number 1, 2, etc.)
+
+  - A capturing group stores *the part of the string* matches by the part of regex inside the parentheses.
+
+  - Can be referred to the same text as previously matched by the capturing group with **backreferences**, like `\1`, `\2`
+  
+```{r}
+str_view(fruit, "(..)\\1", match = TRUE)
+```
+
+---
+# Grouping - Practice
+
+Describe, in words, what these expressions will match:
+
+- `(.)\1\1`
+
+- `"(.)(.)\\2\\1"`
+
+- `(..)\1`
+
+- `"(.).\\1.\\1"`
+
+- `"(.)(.)(.).*\\3\\2\\1"`
+
+--
+
+*A word of caution:* because regular expressions are so powerful, it's easy to try and solve every problem with a single regular expression.
+
+> Some people, when confronted with a problem, think “I know, I'll use regular expressions.” Now they have two problems.
+
+---
+# Detect matches
+
+- Use function `str_detect()`
+
+```{r}
+x <- c("apple", "banana", "pear")
+str_detect(x, "e")
+```
+
+--
+
+- Can take advantage of numeric conversion of logical values to do computation
+
+```{r}
+sum(str_detect(words, "^t"))
+mean(str_detect(words, "[aeiou]$"))
+```
+
+- or extract the detected words with `str_subset()`
+
+```{r}
+str_subset(words, "x$")
+```
+
+---
+# Extract matches
+
+- `str_extract()` and `str_extract_all()` allow us to extract the actual text of a match.
+
+- Example: [Harvard sentences](https://en.wikipedia.org/wiki/Harvard_sentences) used in testing of VOIP system
+
+```{r}
+length(sentences)
+head(sentences)
+```
+
+--
+
+- *Task:* Find all sentences that contain a colour.
+
+```{r}
+colours <- c("red", "orange", "yellow", "green", "blue", "purple")
+colour_match <- str_c(colours, collapse = "|")
+colour_match
+```
+
+- Checkpoint: What is the usage of `color_match`?
+
+---
+# Extract matches - Example
+
+```{r}
+has_colour <- str_subset(sentences, colour_match)
+matches <- str_extract(has_colour, colour_match)
+head(matches)
+```
+
+--
+
+```{r}
+str_view(sentences, colour_match, match = TRUE)
+```
+
+**Question:** In the previous example, you might have noticed that the regular expression matched “reared”, which is not a colour. Modify the regex to fix the problem.
+
+---
+# Replacing matches
+
+- `str_replace()` and `str_replace_all()` allow you to replace matches with new strings
+
+```{r}
+x <- c("apple", "pear", "banana")
+str_replace(x, "[aeiou]", "-")
+str_replace_all(x, "[aeiou]", "-")
+```
+
+--
+
+- `str_replace_all()` allows multiple replacements by supplying a named vector
+
+```{r}
+x <- c("1 house", "2 cars", "3 people")
+str_replace_all(x, c("1" = "one", "2" = "two", "3" = "three"))
+```
+
+---
+# Replacing matches
+
+- Deletion is equivalent to replace a pattern with an empty string (i.e., `""`)
+
+  - It is better to use `str_remove()` or `str_remove_all()` for deletion.
+
+--
+
+- `str_replacce()` allow usage of backreferences to insert components of the match
+
+```{r}
+sentences %>% 
+  str_replace("([^ ]+) ([^ ]+) ([^ ]+)", "\\1 \\3 \\2") %>% 
+  head(5)
+```
+
+--
+
+**Question:** Switch the first and last letters in words. Which of those strings are still words?
+
+---
+# Splitting
+
+- `str_split()` splits a string up into pieces.
+
+```{r}
+sentences %>%
+  head(5) %>% 
+  str_split(" ")
+```
+
+- Use the argument `simplify = TRUE` to convert the results into data frame.
+
+```{r}
+sentences %>%
+  head(5) %>% 
+  str_split(" ", simplify = TRUE)
+```
+
+---
+# Splitting words
+
+- Instead of splitting up strings by patterns, you can also split up by character, line, sentence and word boundary:
+
+```{r}
+x <- "This is a sentence.  This is another sentence."
+str_view_all(x, boundary("word"))
+```
+
+- A closer look:
+
+```{r}
+str_split(x, " ")[[1]]
+str_split(x, boundary("word"))[[1]]
+```
+
+---
+# Miscellaneous 
+
+- To match a specific sequence of character, use `fixed()` to speed up the performance (up to 3x faster than the regular expression)
+
+```{r}
+start_time <- Sys.time()
+str_view(sentences, fixed("the"), match = TRUE)
+Sys.time() - start_time
+```
+
+- `fixed()` doesn't accept the special regular expressions. 
+
+--
+
+- `str_locate()` and `str_locate_all()` give you the starting and ending positions of each match.
+
+- `str_to_lower()` and `str_to_upper()` convert letters in strings into their lower- and uppercases, respectively.
+
+- `str_trim()` removes space in front and at the end of the string
+
+- `str_squish()`reduces repeated whitespace inside a string.

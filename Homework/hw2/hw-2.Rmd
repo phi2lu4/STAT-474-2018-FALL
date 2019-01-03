@@ -1,0 +1,179 @@
+---
+title: "Homework 2 - Chicago Crime Analysis"
+subtitle: "Due: 11:59 PM, Friday, October 12"
+output: html_notebook
+---
+
+In this homework, we are going to explore the Chicago Crime Data set on incidents in the city of Chicago from 2001. Most of questions we are answering is a part of the exploratory data analysis project to find the patterns in crime incidents. **You are asked to write MongoDB queries to compute and extract statistics from the data set and use R only for its graphical facilities.**
+
+# Getting started
+
+Crime in Chicago has been tracked by the Chicago Police Department’s Bureau of Records since the beginning of the 20th century. The city’s violent crime rate, is substantially higher than the US average. It has been the center of national attention thanks to the criticism from President Donald Trump in his 2016 campaine. Although national crime rates in the United States have stayed near historic lows, Chicago was supposedly responsible for nearly half of 2016’s increase in homicides in the United States. The reason for the violence which is localized to some areas of the city, including change in police tactics or increase in gang rivalry, remain unclear.
+
+For this assignment, you are going to explore the current Chicago crime data, with the hope that you would be able to provide at least some answers to the following questions:
+
+  1. How has the number of various crimes changed over time in Chicago?
+  2. Which crimes are most frequently committed?
+  3. Which locations are these frequent crimes being committed in?
+  4. Are there certain high crime neighbourhoods?
+  5. How has the number of homocides changes over the years in Chicago?
+
+The dataset from Chicago Police Department has been downloaded from [data.gov](https://catalog.data.gov/dataset/crimes-2001-to-present-398a4) and then stored in the MongoDB server. The information about accessing the database system is announced in class, including the username, the password, and the URL address of the server. 
+
+We start the assignment with loading the necessary libraries and request the connection with the database system. Use the access information to replace `<USERNAME>`, `<PASSWORD>`, and `<IP_ADDRESS>`.
+
+```{r}
+library(mongolite)
+library(tidyverse)
+
+crimes <- mongo(collection = "crimes", db = "Chicago",
+                url = "mongodb://<USERNAME>:<PASSWORD>@<IP_ADDRESS>/test")
+```
+
+# Data Exploration
+
+It is always useful to take a look at the first few incidents from the data set
+
+```{r}
+crimes$find('{}', limit = 3)
+```
+
+From a sneak peek into the data set, each record's information can be grouped into 4 types:  time of incident, location of incident, type of incident and incident indentifier. Out of all four types, many fields convey the locations of the incidents. You can look up the Chicago Police Department's [districts and beats maps](https://chicagotonight.wttw.com/sites/default/files/Map%20of%20Chicago%20Police%20Districts%20and%20Beats.pdf), [Chicago's ward maps](http://app.chicagoelections.com/documents/general/City%20Wide%20Ward%20Map%202012.pdf), and the [neighborhoods map](https://en.wikipedia.org/wiki/Community_areas_in_Chicago). Information about the types of crimes can be easily obtained as:
+
+```{r}
+crimes$distinct("Primary Type")
+```
+
+### Question 1:
+
+We are interested in finding about which crimes are most frequently committed. You are asked to write a query to extract the total number of incidents for each criminal types and return the top 20 most frequently committed crimes. The computed statistics should be stored in `crime_stats` with the column `Count` containing the total count. 
+
+```{r}
+# Your code goes here
+crime_stats <- ...
+ggplot(crimes_stats, aes(x = reorder(`_id`, Count), y = Count)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(x = "Total number of incidents", y = "Primary Type")
+```
+
+As shown in the chart above, the most common crime type is theft followed by battery. Narcotics is fourth most common while criminal damage is the third most common crime type in the city of Chicago. Furthermore, we can conclude that most of the crime incidents can be classified as one of the top 11 types.
+
+### Question 2:
+
+Another way to find the pattern in crime statistics is how they are changing over time. Create a chart similar to the above to show how the total count of incidents changes annually. Then comment on the pattern you observe from the chart.
+
+```{r}
+# Your code goes here
+
+
+```
+
+### Question 3:
+
+Since majority of incidents are among thefts, batteries, criminal damages and narcotics, we are asked to plot another chart to present their annual changes from 2001 to present. Comment on the similarity/difference between this chart and the one from question 2.
+
+```{r}
+# Your code goes here
+
+
+```
+
+### Question 4:
+
+A lot of national attentions on Chicago have been place on the homicide rates, especially after President Trump expressed his wish to intervene. You're asked to create a chart on homicides in Chicago and verify whether there was a spike in homicides rate in 2016.
+
+*Hint:* In the MongoDB aggregate framework, `$match` operator allows us to filter the documents of interest. For example, if you wish to filter out the homicide cases, the operation `{"$match": {"Primary Type" : "HOMICIDE"}}` returns only homicide cases.
+
+```{r}
+# Your code goes here
+
+
+
+```
+
+### Question 5:
+
+In the last decade, government’s response to this societal problem has increased, both in effort and in effectiveness. The Illinois Domestic Violence Act of 1986 ushered in a new era for our state. Recent Supreme Court rulings have put more "teeth" into the law by effectively mandating that law enforcement act to protect victims of domestic abuse.
+
+In this part, we are exploring the pattern of domestic-related crimes. In the data set, the field `Domestic` indicates whether the corresponding incidents were domestic-related as defined by the Illinois Domestic Violence Act.
+
+From 2001 to present, the total count of domestic-related incidents is:
+```{r}
+crimes$count('{"Domestic" : "true"}')
+```
+
+The breakdown in domestic-related incidents is:
+
+```{r}
+crimes$aggregate('[ {"$match":{"Domestic" : "true"}}, 
+                 {"$group": {"_id" : "$Primary Type", 
+                             "Count": {"$sum" : 1}}}, 
+                 {"$sort" :{"Count" : -1}},
+                 {"$limit": 10}]')
+```
+
+How do domestic-related incidents change over time? Create a chart to present it.
+
+```{r}
+# Your code goes here
+
+
+
+
+```
+
+
+
+There are many different patterns of domestic crimes. For example, are they common in certain days/hours/months? While the information about time and date are available in the data set, extracting such information might be difficult. MongoDB has several operators helping to extract such information from its `Date` format, to which we need to convert the field `Date`.
+
+For example, we can compute the total incidents by day of the week as:
+
+```{r}
+week_day <- crimes$aggregate('[ {"$match" : {"Domestic" : "true"}},
+    {"$project" : {
+        "date" : {
+            "$dateFromString" : {
+                "dateString" : "$Date",
+                "format" : "%Y-%m-%d %H:%M:%S%z" } } } }, 
+    { "$project" : {
+        "weekDay" : { "$dayOfWeek" : "$date" } } },
+    {"$group" : {"_id" : "$weekDay",
+                "Count" : {"$sum" : 1}}},
+    {"$sort" : {"_id" : 1}}]')
+
+week_day
+```
+
+In the aggregate pipeline, there are 5 operations: filtering domestic crimes, converting date in string to date format, figuring which day of the week the date is, counting incidents for each day and sorting the counts. Some of the useful operators on Date type are: `$year`, `$month`, `$dayOfMonth`, `$hour`, `$minute`, `$second`, `$dayOfWeek`, and `$week`.
+
+```{r}
+ggplot(week_day) + 
+  geom_line(aes(x = `_id`, y = Count)) +
+  labs(x = "Day of Week (1 = Sunday)", y = "Total crimes")
+```
+
+### Question 6:
+
+The chart shows that domestic crimes are common over the weekend than in weekdays. It is interesting, but what could be the reason? It is hard to say. However, in this question, you're asked to look at the pattern not only by day of the week but also for each day by hour.
+
+```{r}
+# Your code goes here.
+
+```
+
+
+### Question 7:
+
+As you found out about the type of crimes, theft, battery, criminal damage and narcotics are among the most frequently crimes committed. Can you generate plots by day and hour for each of those.
+
+```{r}
+# Your code goes here
+
+
+
+```
+
+### Question 8:
+
+I am curious about the pattern of crimes and whether they are associated with temperature? While it is possible to query historic weather data, it is time-comsuming. However, we can use month of the year as a proxy for the temperature. What can you say about such pattern? Is it true that crimes are more frequently committed during the warm months? Justify your answer with data from Chicago crime dataset.
